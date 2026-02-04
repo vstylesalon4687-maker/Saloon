@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --primary: #ec4899;
+  --primary-foreground: #ffffff;
+  --secondary: #64748b;
+  --secondary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --border: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-in-up: slideInUp 0.5s ease-out;
+  --animate-slide-in-right: slideInRight 0.5s ease-out;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 4px;
+  opacity: 0.5;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
+}
