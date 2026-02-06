@@ -3,21 +3,15 @@ import { useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Menu } from "lucide-react";
 
-<<<<<<< HEAD
-=======
 import { useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
-
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-<<<<<<< HEAD
-=======
     const { user, loading } = useAuth();
     const router = useRouter();
 
@@ -36,7 +30,6 @@ export default function DashboardLayout({
     }
 
     if (!user) return null;
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
 
     return (
         <div className="min-h-screen bg-gray-50">
