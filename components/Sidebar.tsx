@@ -3,12 +3,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Receipt, Users, CreditCard, UserCog, LogOut, X } from "lucide-react";
-<<<<<<< HEAD
-=======
 import { useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
 
 interface SidebarProps {
     isOpen?: boolean;
@@ -18,8 +15,6 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
 
-<<<<<<< HEAD
-=======
     // Automatically close sidebar when route changes
     useEffect(() => {
         if (isOpen && onClose) {
@@ -35,17 +30,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         }
     };
 
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
     const links = [
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
         { href: "/billing", label: "Billing", icon: Receipt },
         { href: "/customers", label: "Customers", icon: Users },
         { href: "/expenses", label: "Expenses", icon: CreditCard },
-<<<<<<< HEAD
         { href: "/staff", label: "Staff", icon: UserCog },
-=======
-        { href: "/staff", label: "Employee", icon: UserCog },
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
     ];
 
     return (
@@ -64,11 +54,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 )}
             >
                 <div className="flex justify-end p-2 md:hidden">
-<<<<<<< HEAD
-                    <button onClick={onClose} className="p-2 text-gray-500">
-=======
                     <button onClick={onClose} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -88,11 +74,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 <li key={link.href}>
                                     <Link
                                         href={link.href}
-<<<<<<< HEAD
                                         onClick={onClose}
-=======
-                                        onClick={onClose} // Keep manual click handler too
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
                                         className={cn(
                                             "flex items-center rounded-xl p-3 text-gray-600 transition-all duration-200 hover:bg-pink-50 hover:text-pink-600 group",
                                             isActive && "bg-pink-50 text-pink-600 font-semibold shadow-sm"
@@ -106,14 +88,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         })}
                     </ul>
                     <div className="mt-auto pt-6 border-t border-gray-100">
-<<<<<<< HEAD
-                        <button className="flex w-full items-center rounded-xl p-3 text-gray-600 hover:bg-gray-50 transition-colors group">
-=======
                         <button
                             onClick={handleSignOut}
                             className="flex w-full items-center rounded-xl p-3 text-gray-600 hover:bg-gray-50 transition-colors group"
                         >
->>>>>>> 5556c9962706df7b3dd77b79a8df3756fb30048f
                             <LogOut className="h-5 w-5 flex-shrink-0 text-gray-400 transition duration-75 group-hover:text-gray-900" />
                             <span className="ml-3 font-medium">Sign Out</span>
                         </button>
