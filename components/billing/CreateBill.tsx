@@ -152,7 +152,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
                 const snap = await getDocs(q);
 
                 if (!snap.empty) {
-                    const custData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                    const custData: any = { id: snap.docs[0].id, ...snap.docs[0].data() };
                     setSelectedCustomer(custData);
                     setCustomerName(`${custData.firstName} ${custData.lastName || ''}`.trim());
                 } else {
@@ -277,7 +277,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
                 createdAt: new Date()
             };
 
-            let payload = { ...basePayload };
+            let payload: any = { ...basePayload };
 
             if (addItemType === 'Service') {
                 payload = { ...payload, gender: newItemData.gender, duration: newItemData.duration };
