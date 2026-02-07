@@ -8,6 +8,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function Dashboard() {
     const [stats, setStats] = useState({
@@ -22,6 +23,8 @@ export default function Dashboard() {
         online: 0,
         total: 0
     });
+    const [salesGrowthData, setSalesGrowthData] = useState<any[]>([]);
+    const [revenueStreamData, setRevenueStreamData] = useState<any[]>([]);
 
     useEffect(() => {
         // Services Count
@@ -39,14 +42,43 @@ export default function Dashboard() {
             setStats(prev => ({ ...prev, customers: snap.size }));
         }, (err) => console.error("Customers fetch error:", err));
 
-        // Sales Total (from bills)
+        // Sales Total and Charts Data (from bills)
         const unsubSales = onSnapshot(collection(db, "bills"), (snap) => {
             const total = snap.docs.reduce((sum, doc) => sum + (Number(doc.data().grandTotal) || 0), 0);
             setStats(prev => ({ ...prev, sales: total }));
+
+            // Process Sales Growth Data (by date)
+            const salesByDate: { [key: string]: number } = {};
+            snap.docs.forEach(doc => {
+                const data = doc.data();
+                const date = data.date || new Date().toISOString().split('T')[0];
+                salesByDate[date] = (salesByDate[date] || 0) + (Number(data.grandTotal) || 0);
+            });
+
+            // Convert to chart format and sort by date
+            const growthData = Object.entries(salesByDate)
+                .map(([date, sales]) => ({ date, sales: Number(sales.toFixed(2)) }))
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .slice(-7); // Last 7 days
+            setSalesGrowthData(growthData);
+
+            // Process Revenue Stream Data (by payment method)
+            const revenueByMethod: { [key: string]: number } = {};
+            snap.docs.forEach(doc => {
+                const data = doc.data();
+                const method = data.paymentMethod || 'Cash';
+                revenueByMethod[method] = (revenueByMethod[method] || 0) + (Number(data.grandTotal) || 0);
+            });
+
+            // Convert to chart format
+            const streamData = Object.entries(revenueByMethod).map(([name, value]) => ({
+                name,
+                value: Number(value.toFixed(2))
+            }));
+            setRevenueStreamData(streamData);
         }, (err) => console.error("Bills fetch error:", err));
 
         // Appointments (Placeholder for now if collection doesn't exist, will just be 0)
-        // assuming 'appointments' collection with 'type' field
         const unsubAppointments = onSnapshot(collection(db, "appointments"), (snap) => {
             let walkin = 0, phone = 0, online = 0;
             snap.forEach(doc => {
@@ -73,14 +105,16 @@ export default function Dashboard() {
         };
     }, []);
 
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+
     return (
         <div className="space-y-6 animate-fade-in p-2">
 
             {/* --- TOP ROW CARDS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Services */}
-                <div className="bg-[#26c6da] rounded-lg p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-full mr-4">
+                <div className="bg-[#26c6da] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
+                    <div className="bg-white/20 p-3 rounded-none mr-4">
                         <Anchor className="w-8 h-8 text-white" />
                     </div>
                     <div>
@@ -90,8 +124,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Products */}
-                <div className="bg-[#ef5350] rounded-lg p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-full mr-4">
+                <div className="bg-[#ef5350] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
+                    <div className="bg-white/20 p-3 rounded-none mr-4">
                         <ShoppingCart className="w-8 h-8 text-white" />
                     </div>
                     <div>
@@ -101,8 +135,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Customers */}
-                <div className="bg-[#ffa726] rounded-lg p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-full mr-4">
+                <div className="bg-[#ffa726] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
+                    <div className="bg-white/20 p-3 rounded-none mr-4">
                         <Users className="w-8 h-8 text-white" />
                     </div>
                     <div>
@@ -112,8 +146,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Sales */}
-                <div className="bg-[#ff9800] rounded-lg p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-full mr-4">
+                <div className="bg-[#ff9800] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
+                    <div className="bg-white/20 p-3 rounded-none mr-4">
                         <Wallet className="w-8 h-8 text-white" />
                     </div>
                     <div>
@@ -127,7 +161,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Appointments Blueprint (Blue) */}
-                <div className="bg-[#1e88e5] rounded-lg p-4 text-white shadow-md">
+                <div className="bg-[#1e88e5] rounded-none p-4 text-white shadow-md">
                     <div className="flex items-center gap-3 mb-4">
                         <Calendar className="w-8 h-8" />
                         <div>
@@ -170,7 +204,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Clients Table (Purple) */}
-                <div className="bg-[#8e24aa] rounded-lg p-4 text-white shadow-md">
+                <div className="bg-[#8e24aa] rounded-none p-4 text-white shadow-md">
                     <div className="flex items-center gap-3 mb-4">
                         <Smartphone className="w-8 h-8" />
                         <div>
@@ -184,7 +218,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Sales Details (Orange) */}
-                <div className="bg-[#f4511e] rounded-lg p-4 text-white shadow-md">
+                <div className="bg-[#f4511e] rounded-none p-4 text-white shadow-md">
                     <div className="flex items-center gap-3 mb-4">
                         <CreditCard className="w-8 h-8" />
                         <div>
@@ -194,7 +228,7 @@ export default function Dashboard() {
                     </div>
                     <div className="space-y-4">
                         {/* Dynamic breakdown could go here */}
-                        <div className="flex justify-between items-center bg-white/10 p-2 rounded">
+                        <div className="flex justify-between items-center bg-white/10 p-2 rounded-none">
                             <span>Total Sales</span>
                             <span className="font-bold">₹{stats.sales.toFixed(2)}</span>
                         </div>
@@ -202,22 +236,65 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* --- BOTTOM ROW (Chart Placeholders) --- */}
+            {/* --- BOTTOM ROW (Charts) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                {/* Sales Growth Chart */}
+                <div className="bg-white p-4 rounded-none shadow-sm border border-gray-200">
                     <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
                         <TrendingUp className="w-5 h-5 text-blue-500" /> Sales Growth
                     </h3>
-                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded text-gray-400 text-sm">
-                        Chart will be rendered here based on Bill Data
+                    <div className="h-64">
+                        {salesGrowthData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={salesGrowthData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                                    <YAxis tick={{ fontSize: 12 }} />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} name="Sales (₹)" />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center bg-gray-50 rounded-none text-gray-400 text-sm">
+                                No sales data available yet
+                            </div>
+                        )}
                     </div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+
+                {/* Revenue Stream Chart */}
+                <div className="bg-white p-4 rounded-none shadow-sm border border-gray-200">
                     <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
                         <Banknote className="w-5 h-5 text-green-500" /> Revenue Stream
                     </h3>
-                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded text-gray-400 text-sm">
-                        Chart will be rendered here based on Service/Product Split
+                    <div className="h-64">
+                        {revenueStreamData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={revenueStreamData}
+                                        cx="50%"
+                                        cy="50%"
+                                        labelLine={false}
+                                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                        outerRadius={80}
+                                        fill="#8884d8"
+                                        dataKey="value"
+                                    >
+                                        {revenueStreamData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value: any) => `₹${Number(value).toFixed(2)}`} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="h-full flex items-center justify-center bg-gray-50 rounded-none text-gray-400 text-sm">
+                                No revenue data available yet
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

@@ -10,11 +10,20 @@ import Link from "next/link";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useEffect } from "react";
 
 export default function LoginPage() {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const router = useRouter();
+
+    useEffect(() => {
+        if (user) {
+            router.push("/");
+        }
+    }, [user, router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

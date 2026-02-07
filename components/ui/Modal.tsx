@@ -10,30 +10,50 @@ interface ModalProps {
     title: string;
     children: React.ReactNode;
     className?: string;
+    variant?: 'default' | 'drawer-right';
 }
 
-export function Modal({ isOpen, onClose, title, children, className = "" }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, className = "", variant = 'default' }: ModalProps) {
     if (!isOpen) return null;
+
+    const isDrawer = variant === 'drawer-right';
 
     return (
         <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+            className={cn(
+                "fixed inset-0 z-[100] flex bg-black/50 backdrop-blur-sm animate-in fade-in duration-200",
+                isDrawer ? "justify-end items-stretch" : "items-center justify-center"
+            )}
             onClick={onClose}
         >
             <div
                 className={cn(
-                    "bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200",
+                    "bg-white overflow-hidden flex flex-col shadow-xl animate-in duration-300",
+                    isDrawer
+                        ? "w-full md:w-[65%] h-full slide-in-from-right border-l border-gray-200"
+                        : "w-full max-w-4xl max-h-[90vh] rounded-none zoom-in-95 my-auto mx-4",
                     className
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-                    <h2 className="text-lg font-semibold">{title}</h2>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-                        <X className="w-4 h-4" />
-                    </Button>
-                </div>
-                <div className="">
+                {title && (
+                    <div className="flex items-center justify-between p-4 border-b shrink-0 bg-white z-10">
+                        <h2 className="text-lg font-semibold">{title}</h2>
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 hover:bg-gray-100 rounded-none">
+                            <X className="w-4 h-4" />
+                        </Button>
+                    </div>
+                )}
+                {/* Special headerless close button for drawer if title is empty */}
+                {!title && isDrawer && (
+                    <div className="absolute top-2 right-2 z-50">
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 bg-white/50 hover:bg-gray-100 rounded-none shadow-sm border">
+                            <X className="w-4 h-4" />
+                        </Button>
+                    </div>
+                )}
+
+                <div className="flex-1 overflow-auto">
                     {children}
                 </div>
             </div>

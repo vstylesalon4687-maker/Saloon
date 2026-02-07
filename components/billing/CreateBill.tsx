@@ -1,16 +1,16 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-    Search, User, X, Trash2, Save, Plus, Store, Package,
-    Scissors, Tag, Calendar, Printer, UserPlus, ChevronRight,
-    History, CreditCard, ChevronDown, Filter, LogOut, Clock, ShoppingCart, Percent, MapPin
+    Search, User, X, Trash2, Plus,
+    History, ChevronDown, Clock, ShoppingCart, Percent, MapPin, Printer, UserPlus, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { PaymentModal } from "./PaymentModal";
 import { db } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, addDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, where, getDocs } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
+import { cn } from "@/lib/utils";
 
 interface CreateBillProps {
     onBack: () => void;
@@ -18,7 +18,7 @@ interface CreateBillProps {
 
 export function CreateBill({ onBack }: CreateBillProps) {
     // --- State ---
-    const [items, setItems] = useState<any[]>([]); // Start empty or with one placeholder if desired? Image shows one row.
+    const [items, setItems] = useState<any[]>([]);
     const [isCatalogOpen, setIsCatalogOpen] = useState(false);
     const [catalogTab, setCatalogTab] = useState<'Service' | 'Product' | 'Package'>('Service');
     const [searchTerm, setSearchTerm] = useState("");
@@ -29,43 +29,180 @@ export function CreateBill({ onBack }: CreateBillProps) {
     const [products, setProducts] = useState<any[]>([]);
     const [packages, setPackages] = useState<any[]>([]);
 
+    // Customer State
+    const [customerPhone, setCustomerPhone] = useState("");
+    const [customerName, setCustomerName] = useState("");
+    const [foundCustomers, setFoundCustomers] = useState<any[]>([]);
+    const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+    const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
+    const [customerStats, setCustomerStats] = useState({ visits: 0, totalBills: 0, avgBill: 0, lastVisit: '-' });
+    const [activeSearchField, setActiveSearchField] = useState<'phone' | 'name' | null>(null);
+
     // UI/Form State
-    const [customerSearch, setCustomerSearch] = useState("8433217211 - vivek");
     const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+    // Add Item Modal State
+    const [addItemType, setAddItemType] = useState<'Service' | 'Product' | 'Package' | null>(null);
+    const [newItemData, setNewItemData] = useState({
+        name: '',
+        code: '',
+        price: '',
+        category: '',
+        gender: 'Unisex',
+        duration: '30',
+        gst: '0',
+        brand: ''
+    });
 
     // Derived Totals
     const subTotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const totalDiscount = items.reduce((sum, item) => sum + (Number(item.disc) || 0), 0);
-    const totalGst = items.reduce((sum, item) => sum + (Number(item.gst) || 0), 0); // Simplified GST logic
+    const totalGst = items.reduce((sum, item) => sum + (Number(item.gst) || 0), 0);
     const grandTotal = subTotal - totalDiscount + totalGst;
 
     // --- Effects ---
-    // Fetch Staff
+    // Fetch Staff, Services, Products, Packages
     useEffect(() => {
-        const q = query(collection(db, "staff"), orderBy("firstName"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setEmployees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        }, (err) => console.error("Staff fetch error:", err));
-        return () => unsubscribe();
-    }, []);
+        const unsubStaff = onSnapshot(query(collection(db, "staff"), orderBy("firstName")),
+            (snap) => setEmployees(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
 
-    // Fetch Catalog
-    useEffect(() => {
         const unsubServices = onSnapshot(collection(db, "services"),
-            (snap) => setServices(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-            (err) => console.error("Services fetch error:", err));
+            (snap) => setServices(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
         const unsubProducts = onSnapshot(collection(db, "products"),
-            (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-            (err) => console.error("Products fetch error:", err));
+            (snap) => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
         const unsubPackages = onSnapshot(collection(db, "packages"),
-            (snap) => setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-            (err) => console.error("Packages fetch error:", err));
+            (snap) => setPackages(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
-        return () => { unsubServices(); unsubProducts(); unsubPackages(); };
+        return () => { unsubStaff(); unsubServices(); unsubProducts(); unsubPackages(); };
     }, []);
+
+    // Customer Search Effect
+    useEffect(() => {
+        const performSearch = async () => {
+            const searchTerm = activeSearchField === 'phone' ? customerPhone : customerName;
+
+            const minLength = activeSearchField === 'phone' ? 1 : 2;
+
+            if (!searchTerm || searchTerm.trim().length < minLength) {
+                setFoundCustomers([]);
+                return;
+            }
+
+            setIsSearchingCustomer(true);
+            try {
+                let q;
+                if (activeSearchField === 'phone') {
+                    q = query(collection(db, "customers"),
+                        where("mobile", ">=", searchTerm),
+                        where("mobile", "<=", searchTerm + '\uf8ff'));
+                } else {
+                    q = query(collection(db, "customers"),
+                        where("firstName", ">=", searchTerm.toUpperCase()), // Assuming names are stored uppercase or handled case-insensitively
+                        where("firstName", "<=", searchTerm.toUpperCase() + '\uf8ff'));
+
+                    // Fallback or additional check for lowercase if needed, but let's stick to simple first
+                    // Note: Original code didn't force uppercase, but typical for business apps. 
+                    // Let's try exact match as typed if the previous one didn't enforce it?
+                    // The previous code had `customerSearch` which matched both.
+                    // For now, let's keep it simple: case-sensitive prefix search.
+                }
+
+                const snap = await getDocs(q);
+                let results = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                // If searching by name and no results, maybe try lowercase? (optional improvement)
+                if (activeSearchField === 'name' && results.length === 0) {
+                    const qLower = query(collection(db, "customers"),
+                        where("firstName", ">=", searchTerm),
+                        where("firstName", "<=", searchTerm + '\uf8ff'));
+                    const snapLower = await getDocs(qLower);
+                    results = snapLower.docs.map(d => ({ id: d.id, ...d.data() }));
+                }
+
+                setFoundCustomers(results);
+            } catch (err) {
+                console.error("Customer search error:", err);
+            } finally {
+                setIsSearchingCustomer(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            if (activeSearchField) performSearch();
+        }, 200);
+
+        return () => clearTimeout(timer);
+    }, [customerPhone, customerName, activeSearchField]);
+
+    // Fetch Customer Stats
+    // Auto-select customer and fetch stats when phone number matches exactly
+    useEffect(() => {
+        const fetchCustomerByPhone = async () => {
+            const phone = customerPhone?.trim();
+            if (!phone || phone.length < 10) return;
+
+            // If we already have a selected customer and the phone matches, don't re-fetch
+            if (selectedCustomer && selectedCustomer.mobile === phone) return;
+
+            try {
+                const q = query(collection(db, "customers"), where("mobile", "==", phone));
+                const snap = await getDocs(q);
+
+                if (!snap.empty) {
+                    const custData = { id: snap.docs[0].id, ...snap.docs[0].data() };
+                    setSelectedCustomer(custData);
+                    setCustomerName(`${custData.firstName} ${custData.lastName || ''}`.trim());
+                } else {
+                    // Only clear if we clearly don't have a match and user is typing? 
+                    // No, user might be creating a new one. Don't clear selectedCustomer if null?
+                    // If phone doesn't match selectedCustomer, we should probably clear it.
+                    if (selectedCustomer && selectedCustomer.mobile !== phone) {
+                        setSelectedCustomer(null);
+                        setCustomerName(""); // Clear name if phone changed to unknown? Maybe just keep typing.
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching customer by phone:", err);
+            }
+        };
+
+        const debounce = setTimeout(fetchCustomerByPhone, 300); // 300ms debounce for auto-select
+        return () => clearTimeout(debounce);
+    }, [customerPhone]);
+
+    // Fetch Customer Stats based on Phone Number
+    useEffect(() => {
+        const phone = customerPhone?.trim();
+
+        // Reset stats if no valid phone number
+        if (!phone || phone.length < 10) {
+            setCustomerStats({ visits: 0, totalBills: 0, avgBill: 0, lastVisit: '-' });
+            return;
+        }
+
+        // Query bills by phone number (works for both registered and walk-in customers)
+        const q = query(collection(db, "bills"), where("customerPhone", "==", phone));
+        const unsub = onSnapshot(q, (snap) => {
+            const bills = snap.docs.map(d => d.data());
+            const total = bills.length;
+            const totalValue = bills.reduce((sum, b) => sum + (Number(b.grandTotal) || 0), 0);
+            const sortedBills = bills.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const lastBill = sortedBills[0];
+
+            setCustomerStats({
+                visits: total,
+                totalBills: total,
+                avgBill: total > 0 ? totalValue / total : 0,
+                lastVisit: lastBill ? lastBill.date : '-'
+            });
+        });
+
+        return () => unsub();
+    }, [customerPhone]);
+
 
     // --- Handlers ---
     const handleAddItem = (item: any) => {
@@ -79,7 +216,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
             gst: Number(item.gst) || 0,
             code: item.code
         }]);
-        setIsCatalogOpen(false); // Close catalog after selection? The user might want to select multiple. Let's keep distinct.
+        // Don't close catalog, user might want to add more
     };
 
     const handleUpdateItem = (index: number, field: string, value: any) => {
@@ -92,18 +229,28 @@ export function CreateBill({ onBack }: CreateBillProps) {
         setItems(items.filter((_, i) => i !== index));
     };
 
+    const handleSelectCustomer = (customer: any) => {
+        setSelectedCustomer(customer);
+        setCustomerPhone(customer.mobile || "");
+        setCustomerName(`${customer.firstName} ${customer.lastName || ''}`.trim());
+        setFoundCustomers([]); // Close dropdown
+        setActiveSearchField(null);
+    };
+
     const handleSaveBill = async () => {
         try {
             await addDoc(collection(db, "bills"), {
                 date: billDate,
-                customerId: "cust_001", // Placeholder
-                customerName: "Vivek", // Placeholder
+                customerId: selectedCustomer?.id || "walk_in",
+                customerName: customerName || (selectedCustomer ? `${selectedCustomer.firstName} ${selectedCustomer.lastName || ''}`.trim() : "Walk-in Customer"),
+                customerPhone: customerPhone || (selectedCustomer?.mobile || ""),
                 items,
                 subTotal,
                 totalDiscount,
                 totalGst,
                 grandTotal,
-                createdAt: new Date()
+                createdAt: new Date(),
+                paymentMethod: 'Cash' // Default, assuming handled in payment modal
             });
             onBack();
         } catch (error) {
@@ -111,92 +258,169 @@ export function CreateBill({ onBack }: CreateBillProps) {
         }
     };
 
-    // --- Render Helpers ---
+    const handleSaveNewItem = async () => {
+        if (!newItemData.name || !newItemData.price) {
+            alert("Name and Price are required.");
+            return;
+        }
+
+        try {
+            const collectionName = addItemType === 'Service' ? 'services' : addItemType === 'Product' ? 'products' : 'packages';
+
+            // Construct payload based on type
+            const basePayload = {
+                desc: newItemData.name,
+                code: newItemData.code || `${addItemType?.substring(0, 1).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+                price: Number(newItemData.price),
+                category: newItemData.category,
+                gst: Number(newItemData.gst) || 0,
+                createdAt: new Date()
+            };
+
+            let payload = { ...basePayload };
+
+            if (addItemType === 'Service') {
+                payload = { ...payload, gender: newItemData.gender, duration: newItemData.duration };
+            } else if (addItemType === 'Product') {
+                payload = { ...payload, brand: newItemData.brand };
+            } else if (addItemType === 'Package') {
+                // Future: Add included items logic
+                payload = { ...payload, gender: newItemData.gender };
+            }
+
+            await addDoc(collection(db, collectionName), payload);
+            setAddItemType(null); // Close modal
+        } catch (error) {
+            console.error("Error creating item:", error);
+        }
+    };
+
     const renderCatalog = () => {
-        // Filter logic could be more robust
         let data = catalogTab === 'Service' ? services : catalogTab === 'Product' ? products : packages;
         data = data.filter(item => (item.desc || "").toLowerCase().includes(searchTerm.toLowerCase()));
 
         return (
-            <div className="flex flex-col h-[70vh]">
-                {/* Catalog Header */}
-                <div className="flex gap-2 mb-4">
-                    {['Service', 'Product', 'Package'].map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setCatalogTab(tab as any)}
-                            className={`px-4 py-2 text-sm font-semibold border ${catalogTab === tab ? 'bg-[#00bcd4] text-white border-[#00bcd4]' : 'bg-white text-gray-600 border-gray-300'}`}
+            <div className="flex flex-col h-full bg-white p-2 text-xs">
+                {/* Top Controls Row 1: Tabs & Filters */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-2">
+                    {/* Tabs */}
+                    <div className="flex gap-1 items-center">
+                        {['Service', 'Product', 'Package'].map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setCatalogTab(tab as any)}
+                                className={cn(
+                                    "px-4 py-1.5 font-medium border transition-colors text-xs",
+                                    catalogTab === tab
+                                        ? 'bg-[#00bcd4] text-white border-[#00bcd4]'
+                                        : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'
+                                )}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                        <Button
+                            className="h-6 px-2 text-[10px] bg-green-600 hover:bg-green-700 text-white ml-2 shadow-sm border border-green-700 rounded-none"
+                            onClick={() => {
+                                setAddItemType(catalogTab);
+                                setNewItemData({ name: '', code: '', price: '', category: '', gender: 'Unisex', duration: '30', gst: '0', brand: '' });
+                            }}
                         >
-                            {tab}
-                        </button>
-                    ))}
-                    <div className="flex-1 flex flex-col gap-2">
-                        <div className="flex gap-2 justify-end">
-                            <select className="border border-gray-300 rounded px-3 py-1 text-sm text-gray-600 bg-white outline-none focus:border-[#00bcd4]">
+                            <Plus className="w-2.5 h-2.5 mr-1" /> Add {catalogTab}
+                        </Button>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex flex-wrap gap-2">
+                        <div className="relative">
+                            <select className="appearance-none border border-gray-300 px-3 py-1.5 pr-6 text-xs text-gray-600 bg-white outline-none focus:border-[#00bcd4] min-w-[120px] h-8">
                                 <option>Select a gender</option>
                                 <option>Male</option>
                                 <option>Female</option>
                                 <option>Unisex</option>
                             </select>
-                            <select className="border border-gray-300 rounded px-3 py-1 text-sm text-gray-600 bg-white outline-none focus:border-[#00bcd4]">
+                            <ChevronDown className="absolute right-2 top-2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        </div>
+                        <div className="relative">
+                            <select className="appearance-none border border-gray-300 px-3 py-1.5 pr-6 text-xs text-gray-600 bg-white outline-none focus:border-[#00bcd4] min-w-[130px] h-8">
                                 <option>Select a category</option>
                             </select>
-                            <select className="border border-gray-300 rounded px-3 py-1 text-sm text-gray-600 bg-white outline-none focus:border-[#00bcd4]">
+                            <ChevronDown className="absolute right-2 top-2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        </div>
+                        <div className="relative">
+                            <select className="appearance-none border border-gray-300 px-3 py-1.5 pr-6 text-xs text-gray-600 bg-white outline-none focus:border-[#00bcd4] min-w-[140px] h-8">
                                 <option>Select a subcategory</option>
                             </select>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                            <div className="relative flex-1">
-                                <div className="absolute inset-y-0 left-0 bg-[#0284c7] w-10 flex items-center justify-center rounded-l">
-                                    <Search className="h-5 w-5 text-white" />
-                                </div>
-                                <Input
-                                    placeholder="Search"
-                                    className="pl-12 border-yellow-400 focus:ring-yellow-400 rounded-l-none h-10 shadow-sm"
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex items-center shadow-sm">
-                                <span className="bg-orange-400 text-white px-4 py-2 text-sm font-bold rounded-l h-10 flex items-center">Price</span>
-                                <input className="border border-orange-400 rounded-r px-2 py-2 w-24 text-sm outline-none h-10" placeholder="0" />
-                            </div>
-                            <div className="flex items-center shadow-sm">
-                                <span className="bg-gray-600 text-white px-4 py-2 text-sm font-bold rounded-l h-10 flex items-center">M-Price</span>
-                                <input className="border border-gray-600 rounded-r px-2 py-2 w-24 text-sm outline-none h-10" placeholder="0" />
-                            </div>
+                            <ChevronDown className="absolute right-2 top-2 h-4 w-4 text-gray-400 pointer-events-none" />
                         </div>
                     </div>
                 </div>
 
-                {/* Catalog List matching Image 1 */}
-                <div className="flex-1 overflow-auto bg-white border border-gray-200">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-[#fcf8e3] text-gray-800 font-bold sticky top-0">
+                {/* Top Controls Row 2: Search & Price Inputs */}
+                <div className="flex flex-col md:flex-row gap-2 mb-2">
+                    <div className="flex-1 relative flex h-8">
+                        <div className="bg-[#0284c7] w-8 flex items-center justify-center border border-[#0284c7]">
+                            <Search className="h-4 w-4 text-white" />
+                        </div>
+                        <Input
+                            placeholder="Search"
+                            className="rounded-none border-l-0 border-yellow-400 focus:ring-0 focus:border-yellow-400 h-8 shadow-sm text-xs"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <div className="flex items-center shadow-sm h-8">
+                            <span className="bg-orange-400 text-white px-2 h-full flex items-center text-xs font-semibold min-w-[50px] justify-center">Price</span>
+                            <input className="border border-l-0 border-orange-400 px-2 w-16 text-xs outline-none h-full text-right" placeholder="0" />
+                        </div>
+                        <div className="flex items-center shadow-sm h-8">
+                            <span className="bg-gray-600 text-white px-2 h-full flex items-center text-xs font-semibold min-w-[60px] justify-center">M-Price</span>
+                            <input className="border border-l-0 border-gray-600 px-2 w-16 text-xs outline-none h-full text-right" placeholder="0" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Catalog Table */}
+                <div className="flex-1 overflow-auto border border-gray-200 bg-white">
+                    <table className="w-full text-xs text-left">
+                        <thead className="bg-[#fcf8e3] text-gray-800 font-bold sticky top-0 z-10">
                             <tr>
-                                <th className="p-3 w-10"></th>
-                                <th className="p-3">Code</th>
-                                <th className="p-3">Desc</th>
-                                <th className="p-3 text-right">Price</th>
-                                <th className="p-3 text-right">M-Price</th>
-                                <th className="p-3 text-right">GST</th>
+                                <th className="p-2 w-10 text-center"></th>
+                                <th className="p-2">Code</th>
+                                <th className="p-2">Desc</th>
+                                <th className="p-2 text-right">Price</th>
+                                <th className="p-2 text-right">M-Price</th>
+                                <th className="p-2 text-right">GST</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {data.map((item, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleAddItem(item)}>
-                                    <td className="p-2 text-center">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs ${['bg-purple-500', 'bg-blue-500', 'bg-gray-500', 'bg-green-500', 'bg-red-500', 'bg-orange-500'][idx % 6]}`}>
-                                            {item.desc?.charAt(0)}
-                                        </div>
-                                    </td>
-                                    <td className="p-2 font-medium text-gray-600">{item.code || `ID-${idx}`}</td>
-                                    <td className="p-2 font-bold text-gray-700">{item.desc}</td>
-                                    <td className="p-2 text-right">{item.price}</td>
-                                    <td className="p-2 text-right">{item.price}</td>
-                                    <td className="p-2 text-right">{item.gst || 0}</td>
-                                </tr>
-                            ))}
+                            {/* Loading / Empty States */}
+                            {services.length === 0 && products.length === 0 && (
+                                <tr><td colSpan={6} className="p-8 text-center text-gray-400">Loading catalog data...</td></tr>
+                            )}
+
+                            {data.map((item, idx) => {
+                                // Generate a color based on index or content for variety
+                                const colorClass = ['bg-purple-500', 'bg-blue-500', 'bg-gray-500', 'bg-green-500', 'bg-red-500', 'bg-orange-500'][idx % 6];
+                                const letter = item.desc ? item.desc.charAt(0).toUpperCase() : '?';
+
+                                return (
+                                    <tr key={idx} className="hover:bg-gray-50 cursor-pointer transition-colors group" onClick={() => handleAddItem(item)}>
+                                        <td className="p-1.5 text-center">
+                                            <div className={cn("w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] shadow-sm mx-auto", colorClass)}>
+                                                {letter}
+                                            </div>
+                                        </td>
+                                        <td className="p-1.5 font-medium text-gray-600 group-hover:text-blue-600">{item.code || `P-${idx}`}</td>
+                                        <td className="p-1.5 font-bold text-gray-700">{item.desc}</td>
+                                        <td className="p-1.5 text-right font-medium">{item.price}</td>
+                                        <td className="p-1.5 text-right text-gray-500">{item.price}</td>
+                                        <td className="p-1.5 text-right text-gray-500">{item.gst || 0}</td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -205,82 +429,139 @@ export function CreateBill({ onBack }: CreateBillProps) {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col font-sans text-sm">
+        <div className="min-h-screen bg-gray-100 flex flex-col font-sans text-sm animate-fade-in relative">
             {/* Top Tabs */}
-            <div className="bg-gray-200 flex border-b border-gray-300">
-                <div className="px-6 py-2 text-gray-600 font-medium cursor-pointer" onClick={onBack}>Bill Home Page</div>
-                <div className="px-6 py-2 bg-[#0284c7] text-white font-medium relative flex items-center gap-2">
+            <div className="bg-white flex border-b border-gray-200 shadow-sm sticky top-0 z-20">
+                <div className="px-6 py-3 text-gray-600 font-medium cursor-pointer hover:bg-gray-50 transition-colors" onClick={onBack}>
+                    Bill Home Page
+                </div>
+                <div className="px-6 py-3 bg-[#0284c7] text-white font-medium relative flex items-center gap-2">
                     Add Bill
                     <X className="w-4 h-4 cursor-pointer hover:bg-white/20 rounded-full" onClick={onBack} />
                 </div>
             </div>
 
-            <div className="flex flex-1 p-2 gap-2 overflow-hidden">
+            <div className="flex flex-col lg:flex-row flex-1 p-2 md:p-4 gap-4 overflow-hidden">
                 {/* LEFT MAIN CONTENT */}
-                <div className="flex-1 flex flex-col bg-white rounded shadow-sm border border-gray-200 h-full">
+                <div className="flex-1 flex flex-col bg-white rounded-none shadow-sm border border-gray-200 overflow-hidden h-full">
 
                     {/* Header Inputs */}
-                    <div className="p-4 flex gap-4 items-end border-b">
-                        <div className="flex-1">
-                            <label className="text-gray-500 text-xs mb-1 block">Customer</label>
-                            <div className="flex gap-1">
+                    <div className="p-4 flex flex-col md:flex-row gap-4 items-start md:items-end border-b bg-gray-50/50">
+                        <div className="md:w-64 relative">
+                            <label className="text-gray-500 text-xs mb-1 block font-semibold uppercase">Customer Phone</label>
+                            <div className="flex gap-1 relative">
+                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    className="bg-gray-50 border-gray-300 h-9"
-                                    value={customerSearch}
-                                    onChange={e => setCustomerSearch(e.target.value)}
+                                    className="bg-white border-gray-300 h-10 pl-9 rounded-none"
+                                    placeholder="Enter Phone"
+                                    value={customerPhone}
+                                    onChange={e => {
+                                        setCustomerPhone(e.target.value);
+                                        setActiveSearchField('phone');
+                                        if (!e.target.value) setSelectedCustomer(null);
+                                    }}
                                 />
-                                <Button className="bg-gray-700 hover:bg-gray-800 h-9 px-3"><UserPlus className="w-4 h-4" /></Button>
                             </div>
+                            {/* Search Results Dropdown for Phone */}
+                            {activeSearchField === 'phone' && foundCustomers.length > 0 && (
+                                <div className="absolute top-12 left-0 right-0 bg-white border border-gray-200 shadow-xl rounded-none z-30 max-h-60 overflow-y-auto">
+                                    {foundCustomers.map(cust => (
+                                        <div
+                                            key={cust.id}
+                                            className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                                            onClick={() => handleSelectCustomer(cust)}
+                                        >
+                                            <div className="font-bold text-gray-900 border-b border-gray-100 pb-1 mb-1">{cust.mobile}</div>
+                                            <div className="text-xs text-gray-600 font-medium">{cust.firstName} {cust.lastName}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        <div className="w-48">
-                            <label className="text-gray-500 text-xs mb-1 block">Date</label>
+
+                        <div className="flex-1 w-full relative">
+                            <label className="text-gray-500 text-xs mb-1 block font-semibold uppercase">Customer Name</label>
+                            <div className="flex gap-1 relative">
+                                <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                <Input
+                                    className="bg-white border-gray-300 h-10 pl-9 rounded-none"
+                                    placeholder="Enter Name"
+                                    value={customerName}
+                                    onChange={e => {
+                                        setCustomerName(e.target.value);
+                                        setActiveSearchField('name');
+                                        if (!e.target.value) setSelectedCustomer(null);
+                                    }}
+                                />
+                            </div>
+                            {/* Search Results Dropdown for Name */}
+                            {activeSearchField === 'name' && foundCustomers.length > 0 && (
+                                <div className="absolute top-12 left-0 right-0 bg-white border border-gray-200 shadow-xl rounded-none z-30 max-h-60 overflow-y-auto">
+                                    {foundCustomers.map(cust => (
+                                        <div
+                                            key={cust.id}
+                                            className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
+                                            onClick={() => handleSelectCustomer(cust)}
+                                        >
+                                            <div className="font-bold text-gray-800">{cust.firstName} {cust.lastName}</div>
+                                            <div className="text-xs text-gray-500">{cust.mobile}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="w-full md:w-48">
+                            <label className="text-gray-500 text-xs mb-1 block font-semibold uppercase">Date</label>
                             <Input
                                 type="date"
-                                className="bg-gray-50 border-gray-300 h-9"
+                                className="bg-white border-gray-300 h-10 rounded-none"
                                 value={billDate}
                                 onChange={e => setBillDate(e.target.value)}
                             />
                         </div>
                         <Button
-                            className="bg-[#00bcd4] hover:bg-[#00acc1] text-white h-9 px-4 gap-1"
+                            className="w-full md:w-auto bg-[#00bcd4] hover:bg-[#00acc1] text-white h-10 px-6 gap-2 shadow-sm font-semibold rounded-none"
                             onClick={() => setIsCatalogOpen(true)}
                         >
-                            Add <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4" /> Add Item
                         </Button>
                     </div>
 
                     {/* Billing Table */}
-                    <div className="flex-1 overflow-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-[#334155] text-white">
+                    <div className="flex-1 overflow-x-auto">
+                        <table className="w-full text-sm text-left whitespace-nowrap">
+                            <thead className="bg-[#334155] text-white sticky top-0">
                                 <tr>
-                                    <th className="px-4 py-2 font-medium w-1/5">Staff</th>
-                                    <th className="px-4 py-2 font-medium w-1/4">Particulars</th>
-                                    <th className="px-4 py-2 font-medium w-16">Qty</th>
-                                    <th className="px-4 py-2 font-medium w-24">Price</th>
-                                    <th className="px-4 py-2 font-medium w-20">Disc</th>
-                                    <th className="px-4 py-2 font-medium w-20">Gst</th>
-                                    <th className="px-4 py-2 font-medium w-24">Total</th>
-                                    <th className="px-4 py-2 font-medium w-10"></th>
+                                    <th className="px-4 py-3 font-medium min-w-[150px]">Staff</th>
+                                    <th className="px-4 py-3 font-medium min-w-[200px]">Particulars</th>
+                                    <th className="px-4 py-3 font-medium w-24 text-center">Qty</th>
+                                    <th className="px-4 py-3 font-medium w-24 text-center">Price</th>
+                                    <th className="px-4 py-3 font-medium w-20 text-center">Disc</th>
+                                    <th className="px-4 py-3 font-medium w-20 text-center">Gst</th>
+                                    <th className="px-4 py-3 font-medium w-28 text-right">Total</th>
+                                    <th className="px-4 py-3 font-medium w-12"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {items.length === 0 && (
                                     <tr>
-                                        <td colSpan={8} className="p-8 text-center text-gray-400 italic">
-                                            No items added. Click 'Add' to select services.
+                                        <td colSpan={8} className="p-12 text-center text-gray-400 italic bg-gray-50">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <ShoppingCart className="w-8 h-8 opacity-20" />
+                                                <p>No items added. Click 'Add Item' to select services.</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}
                                 {items.map((item, idx) => (
-                                    <tr key={item.id} className="hover:bg-gray-50">
+                                    <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
                                         <td className="p-2">
                                             <select
-                                                className="w-full border-gray-300 rounded px-2 py-1 text-xs"
+                                                className="w-full border-gray-300 rounded-none focus:ring-blue-500 focus:border-blue-500 text-xs p-1.5 bg-white"
                                                 value={item.staff}
                                                 onChange={(e) => handleUpdateItem(idx, 'staff', e.target.value)}
                                             >
-                                                <option value="">Select Employee</option>
+                                                <option value="">Select Staff</option>
                                                 {employees.map(emp => (
                                                     <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
                                                 ))}
@@ -288,7 +569,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
                                         </td>
                                         <td className="p-2">
                                             <Input
-                                                className="h-8 text-xs font-semibold text-gray-700 uppercase border-transparent hover:border-gray-200"
+                                                className="h-9 text-xs font-semibold text-gray-700 uppercase rounded-none"
                                                 value={item.service}
                                                 readOnly
                                             />
@@ -296,7 +577,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
                                         <td className="p-2">
                                             <Input
                                                 type="number"
-                                                className="h-8 text-xs border-yellow-400 focus:ring-yellow-400 bg-[#fffbeb]"
+                                                className="h-9 text-xs font-bold text-center rounded-none w-full"
                                                 value={item.qty}
                                                 onChange={(e) => handleUpdateItem(idx, 'qty', Number(e.target.value))}
                                             />
@@ -304,7 +585,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
                                         <td className="p-2">
                                             <Input
                                                 type="number"
-                                                className="h-8 text-xs border-gray-200"
+                                                className="h-9 text-xs text-right rounded-none w-full"
                                                 value={item.price}
                                                 onChange={(e) => handleUpdateItem(idx, 'price', Number(e.target.value))}
                                             />
@@ -312,7 +593,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
                                         <td className="p-2">
                                             <Input
                                                 type="number"
-                                                className="h-8 text-xs border-gray-200"
+                                                className="h-9 text-xs text-right rounded-none w-full"
                                                 value={item.disc}
                                                 onChange={(e) => handleUpdateItem(idx, 'disc', Number(e.target.value))}
                                             />
@@ -320,24 +601,24 @@ export function CreateBill({ onBack }: CreateBillProps) {
                                         <td className="p-2">
                                             <Input
                                                 type="number"
-                                                className="h-8 text-xs border-gray-200"
+                                                className="h-9 text-xs text-right bg-gray-50 rounded-none w-full"
                                                 value={item.gst}
                                                 readOnly
                                             />
                                         </td>
                                         <td className="p-2">
                                             <Input
-                                                className="h-8 text-xs font-bold text-gray-700 bg-gray-50 border-transparent"
+                                                className="h-9 text-xs font-bold text-gray-700 bg-gray-50 text-right rounded-none w-full"
                                                 value={(item.price * item.qty - (item.disc || 0)).toFixed(0)}
                                                 readOnly
                                             />
                                         </td>
                                         <td className="p-2 text-center">
                                             <button
-                                                className="w-6 h-6 rounded-full bg-red-100 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors"
+                                                className="w-8 h-8 rounded-none bg-red-100 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all"
                                                 onClick={() => handleRemoveItem(idx)}
                                             >
-                                                <Trash2 className="w-3 h-3" />
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </td>
                                     </tr>
@@ -348,116 +629,104 @@ export function CreateBill({ onBack }: CreateBillProps) {
                 </div>
 
                 {/* RIGHT SIDEBAR */}
-                <div className="w-[350px] flex flex-col gap-2">
+                <div className="w-full lg:w-[350px] flex flex-col gap-4">
                     {/* Customer Profile Card */}
-                    <div className="bg-white rounded shadow-sm border border-gray-200 p-4">
-                        <div className="flex flex-col items-center mb-4">
-                            <div className="w-16 h-16 rounded-full bg-red-100 border-2 border-green-500 p-1 mb-2 overflow-hidden relative">
-                                <div className="w-full h-full rounded-full bg-gray-300 flex items-center justify-center">
-                                    {/* Placeholder Avatar */}
-                                    <User className="w-8 h-8 text-gray-500" />
-                                </div>
+                    <div className="bg-white rounded-none shadow-sm border border-gray-200 p-6 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-purple-500"></div>
+                        <div className="flex flex-col items-center mb-6">
+                            <div className="w-20 h-20 rounded-full bg-gray-100 border-4 border-white shadow-md mb-3 flex items-center justify-center relative">
+                                {selectedCustomer ? (
+                                    <div className="text-2xl font-bold text-gray-400">{selectedCustomer.firstName.charAt(0)}</div>
+                                ) : (
+                                    <User className="w-8 h-8 text-gray-300" />
+                                )}
+                                <div className={cn("absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-white", selectedCustomer ? "bg-green-500" : "bg-gray-300")}></div>
                             </div>
-                            <h3 className="font-bold text-gray-800 text-lg">Vivek</h3>
-                            <p className="text-gray-500 text-sm">8433217211</p>
-                            <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded mt-1 uppercase font-bold">Non Member</span>
+                            <h3 className="font-bold text-gray-800 text-xl">
+                                {selectedCustomer ? `${selectedCustomer.firstName} ${selectedCustomer.lastName || ''}` : customerName || "Guest Customer"}
+                            </h3>
+                            <p className="text-gray-500 text-sm font-medium">
+                                {selectedCustomer ? selectedCustomer.mobile : customerPhone || "No customer selected"}
+                            </p>
+                            <span className={cn("text-[10px] px-2 py-0.5 rounded-none mt-2 uppercase font-bold tracking-wide", selectedCustomer ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500")}>
+                                {selectedCustomer ? "Registered" : "Walk-in"}
+                            </span>
                         </div>
 
                         {/* Customer Stats */}
-                        <div className="space-y-2 text-xs text-gray-600 mb-4">
-                            <div className="flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-gray-400" />
-                                <span className="w-24">No of visits</span>
-                                <span className="font-bold text-gray-800">5</span>
+                        <div className="space-y-3 text-sm text-gray-600 bg-gray-50 p-4 rounded-none">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-gray-400" />
+                                    <span>Visits</span>
+                                </div>
+                                <span className="font-bold text-gray-800">{customerStats.visits}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <ShoppingCart className="w-4 h-4 text-gray-400" />
-                                <span className="w-24">Total no bills</span>
-                                <span className="font-bold text-gray-800">5</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <ShoppingCart className="w-4 h-4 text-gray-400" />
+                                    <span>Total Spent</span>
+                                </div>
+                                <span className="font-bold text-gray-800">₹{customerStats.totalBills * customerStats.avgBill}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Percent className="w-4 h-4 text-gray-400" />
-                                <span className="w-24">Avg bill value</span>
-                                <span className="font-bold text-gray-800">₹113.00</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Percent className="w-4 h-4 text-gray-400" />
+                                    <span>Avg Bill</span>
+                                </div>
+                                <span className="font-bold text-gray-800">₹{customerStats.avgBill.toFixed(2)}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-gray-400" />
-                                <span className="w-24">Last visit</span>
-                                <span className="font-bold text-gray-800">01/02/2026</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <History className="w-4 h-4 text-gray-400" />
-                                <span className="w-24">History</span>
-                                <span className="text-red-500 underline cursor-pointer font-semibold">Click Here</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 text-gray-400" />
+                                    <span>Last Visit</span>
+                                </div>
+                                <span className="font-bold text-gray-800">{customerStats.lastVisit}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Bill Summary */}
-                    <div className="bg-white rounded shadow-sm border border-gray-200 flex flex-col flex-1">
+                    <div className="bg-white rounded-none shadow-sm border border-gray-200 flex flex-col flex-1 overflow-hidden">
                         <div className="flex border-b">
-                            <button className="flex-1 py-2 text-xs font-semibold text-gray-500 bg-gray-50 border-r">Add Discount</button>
-                            <button className="flex-1 py-2 text-xs font-semibold text-white bg-[#0284c7]">Bill Details</button>
+                            <button className="flex-1 py-3 text-xs font-bold text-gray-500 bg-gray-50 hover:bg-gray-100 transition-colors uppercase tracking-wider">Add Discount</button>
+                            <button className="flex-1 py-3 text-xs font-bold text-white bg-[#0284c7] uppercase tracking-wider">Bill Details</button>
                         </div>
 
-                        <div className="p-4 space-y-2 flex-1 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-red-400 italic font-medium">Net Sales (before Discount)</span>
-                                <span className="font-bold text-gray-800">₹{subTotal.toFixed(2)}</span>
+                        <div className="p-6 space-y-3 flex-1 text-sm">
+                            <div className="flex justify-between items-center pb-2 border-b border-dashed">
+                                <span className="text-gray-500 font-medium">Subtotal</span>
+                                <span className="font-bold text-gray-800 text-lg">₹{subTotal.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between text-gray-600">
-                                <span>Mem - Disc</span>
-                                <span>+ ₹0.00</span>
+
+                            <div className="space-y-1 py-2">
+                                <div className="flex justify-between text-gray-600 text-xs">
+                                    <span>Item Discounts</span>
+                                    <span className="text-green-600">- ₹{totalDiscount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-gray-600 text-xs">
+                                    <span>GST / Tax</span>
+                                    <span className="text-red-500">+ ₹{totalGst.toFixed(2)}</span>
+                                </div>
                             </div>
-                            <div className="flex justify-between text-gray-600">
-                                <span>Discount</span>
-                                <span>+ ₹{totalDiscount.toFixed(2)}</span>
+
+                            <div className="flex justify-between items-center pt-4 border-t-2 border-gray-100 mt-2">
+                                <span className="text-gray-800 text-lg font-bold">Total Payable</span>
+                                <span className="text-[#6366f1] text-2xl font-black">₹{grandTotal.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between font-medium text-gray-700 pt-2 border-t border-dashed">
-                                <span>Discount Total</span>
-                                <span>- ₹{totalDiscount.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-[#00bcd4]">
-                                <span>Net Sales (- Discount)</span>
-                                <span>₹{(subTotal - totalDiscount).toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-red-500">
-                                <span>GST (Tax)</span>
-                                <span>+ ₹{totalGst.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between font-bold text-[#00bcd4] pt-2 border-t">
-                                <span>Gross Sales</span>
-                                <span>₹{grandTotal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-gray-600">
-                                <span>Advance Amount</span>
-                                <span>+ ₹0.00</span>
-                            </div>
-                            <div className="flex justify-between text-orange-400 font-medium">
-                                <span>Advance Total</span>
-                                <span>- ₹0.00</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-2 mt-2">
-                                <span className="text-[#6366f1] text-xl font-bold">Total</span>
-                                <span className="text-[#6366f1] text-xl font-bold">₹{grandTotal.toFixed(2)}</span>
-                            </div>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 border-t border-gray-200">
+                            <Button
+                                className="w-full bg-[#00bcd4] hover:bg-[#00acc1] text-white h-12 shadow-md font-bold text-lg rounded-none"
+                                onClick={() => setIsPaymentModalOpen(true)}
+                                disabled={items.length === 0}
+                            >
+                                Generate Bill <Printer className="w-5 h-5 ml-2" />
+                            </Button>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {/* Footer */}
-            <div className="bg-white border-t p-2 flex justify-end items-center gap-3">
-                <div className="flex items-center gap-2 mr-4">
-                    <span className="font-bold text-gray-700">Total</span>
-                    <span className="bg-[#6366f1] text-white px-3 py-1 rounded font-bold">₹{grandTotal.toFixed(2)}</span>
-                </div>
-                <Button variant="destructive" className="bg-red-500 hover:bg-red-600 h-9" onClick={onBack}>
-                    Close X
-                </Button>
-                <Button className="bg-[#00bcd4] hover:bg-[#00acc1] text-white h-9" onClick={() => setIsPaymentModalOpen(true)}>
-                    Generate Bill <Printer className="w-4 h-4 ml-2" />
-                </Button>
             </div>
 
             {/* Service Catalog Modal */}
@@ -465,12 +734,10 @@ export function CreateBill({ onBack }: CreateBillProps) {
                 isOpen={isCatalogOpen}
                 onClose={() => setIsCatalogOpen(false)}
                 title=""
-                className="max-w-5xl bg-transparent shadow-none border-none"
+                className="bg-white"
+                variant="drawer-right"
             >
-                {/* Custom render for the catalog matching the image */}
-                <div className="bg-white rounded-lg shadow-xl overflow-hidden">
-                    {renderCatalog()}
-                </div>
+                {renderCatalog()}
             </Modal>
 
             {/* Payment Modal */}
@@ -483,6 +750,128 @@ export function CreateBill({ onBack }: CreateBillProps) {
                     handleSaveBill();
                 }}
             />
+
+            {/* Add New Item Modal */}
+            <Modal
+                isOpen={!!addItemType}
+                onClose={() => setAddItemType(null)}
+                title={`Add New ${addItemType}`}
+                className="max-w-md w-full bg-white rounded-none p-0"
+            >
+                <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-700 uppercase">Name / Description <span className="text-red-500">*</span></label>
+                        <Input
+                            value={newItemData.name}
+                            onChange={(e) => setNewItemData({ ...newItemData, name: e.target.value })}
+                            placeholder={`Enter ${addItemType} Name`}
+                            className="bg-gray-50 border-gray-300 rounded-none"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase">Code</label>
+                            <Input
+                                value={newItemData.code}
+                                onChange={(e) => setNewItemData({ ...newItemData, code: e.target.value })}
+                                placeholder="Auto-generated if empty"
+                                className="bg-gray-50 border-gray-300 rounded-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase">Price <span className="text-red-500">*</span></label>
+                            <Input
+                                type="number"
+                                value={newItemData.price}
+                                onChange={(e) => setNewItemData({ ...newItemData, price: e.target.value })}
+                                placeholder="0.00"
+                                className="bg-gray-50 border-gray-300 rounded-none"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase">Category</label>
+                            <select
+                                className="flex h-10 w-full rounded-none border border-gray-300 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value={newItemData.category}
+                                onChange={(e) => setNewItemData({ ...newItemData, category: e.target.value })}
+                            >
+                                <option value="">Select Category</option>
+                                <option value="Hair">Hair</option>
+                                <option value="Skin">Skin</option>
+                                <option value="Makeup">Makeup</option>
+                                <option value="Spa">Spa</option>
+                                <option value="Nails">Nails</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase">GST %</label>
+                            <Input
+                                type="number"
+                                value={newItemData.gst}
+                                onChange={(e) => setNewItemData({ ...newItemData, gst: e.target.value })}
+                                placeholder="0"
+                                className="bg-gray-50 border-gray-300 rounded-none"
+                            />
+                        </div>
+                    </div>
+
+                    {(addItemType === 'Service' || addItemType === 'Package') && (
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase">Gender</label>
+                            <div className="flex gap-4 pt-1">
+                                {['Male', 'Female', 'Unisex'].map(g => (
+                                    <label key={g} className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="gender"
+                                            checked={newItemData.gender === g}
+                                            onChange={() => setNewItemData({ ...newItemData, gender: g })}
+                                            className="text-blue-600 focus:ring-blue-500 rounded-none"
+                                        />
+                                        <span className="text-sm text-gray-600">{g}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {addItemType === 'Service' && (
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase">Duration (mins)</label>
+                            <Input
+                                type="number"
+                                value={newItemData.duration}
+                                onChange={(e) => setNewItemData({ ...newItemData, duration: e.target.value })}
+                                placeholder="30"
+                                className="bg-gray-50 border-gray-300 rounded-none"
+                            />
+                        </div>
+                    )}
+
+                    {addItemType === 'Product' && (
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-700 uppercase">Brand</label>
+                            <Input
+                                value={newItemData.brand}
+                                onChange={(e) => setNewItemData({ ...newItemData, brand: e.target.value })}
+                                placeholder="Brand Name"
+                                className="bg-gray-50 border-gray-300 rounded-none"
+                            />
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-4 gap-3 border-t mt-4">
+                        <Button variant="outline" className="rounded-none shadow-sm" onClick={() => setAddItemType(null)}>Cancel</Button>
+                        <Button className="bg-[#00bcd4] hover:bg-[#00acc1] text-white rounded-none shadow-sm" onClick={handleSaveNewItem}>
+                            Save {addItemType}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
