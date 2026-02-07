@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/Label";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Lock, User } from "lucide-react";
 import { useRouter } from "next/navigation";
+<<<<<<< HEAD
 import Link from "next/link";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -14,11 +15,17 @@ import { auth } from "@/lib/firebase";
 export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+=======
+
+export default function LoginPage() {
+    const [loading, setLoading] = useState(false);
+>>>>>>> fe145a2ba9e18c235e6d78aaa01bd73397c39c6b
     const router = useRouter();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+<<<<<<< HEAD
         setError("");
 
         const form = e.target as HTMLFormElement;
@@ -34,17 +41,27 @@ export default function LoginPage() {
         } finally {
             setLoading(false);
         }
+=======
+        // Simulate login
+        setTimeout(() => {
+            setLoading(false);
+            router.push("/");
+        }, 1000);
+>>>>>>> fe145a2ba9e18c235e6d78aaa01bd73397c39c6b
     };
 
     return (
         <Card className="border shadow-xl">
             <CardContent className="pt-6">
                 <form className="space-y-6" onSubmit={handleLogin}>
+<<<<<<< HEAD
                     {error && (
                         <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm border border-red-200">
                             {error}
                         </div>
                     )}
+=======
+>>>>>>> fe145a2ba9e18c235e6d78aaa01bd73397c39c6b
                     <div className="space-y-4 rounded-md shadow-sm">
                         <div className="space-y-1">
                             <Label htmlFor="username">Username</Label>
@@ -108,6 +125,7 @@ export default function LoginPage() {
                             {loading ? "Signing in..." : "Sign in"}
                         </Button>
                     </div>
+<<<<<<< HEAD
 
                     <div className="text-center text-sm">
                         <span className="text-gray-600">Don't have an account? </span>
@@ -115,6 +133,8 @@ export default function LoginPage() {
                             Sign up
                         </Link>
                     </div>
+=======
+>>>>>>> fe145a2ba9e18c235e6d78aaa01bd73397c39c6b
                 </form>
             </CardContent>
         </Card>
