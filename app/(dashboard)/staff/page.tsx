@@ -86,79 +86,79 @@ export default function StaffPage() {
     );
 
     return (
-        <div className="space-y-6 animate-fade-in p-4 bg-gray-50 min-h-screen">
+        <div className="space-y-6 animate-fade-in p-4 bg-background min-h-screen">
 
 
             {/* Top Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-[#0284c7] rounded-none p-4 text-white flex items-center shadow-sm">
-                    <div className="bg-white/20 p-3 rounded-none mr-4"><Users className="w-8 h-8" /></div>
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center">
+                    <div className="bg-purple-50 p-3 rounded-xl mr-4 text-purple-600"><Users className="w-8 h-8" /></div>
                     <div>
-                        <h3 className="text-2xl font-bold">{employees.length}</h3>
-                        <p className="text-sm opacity-90">Total Employees</p>
+                        <h3 className="text-2xl font-bold text-foreground">{employees.length}</h3>
+                        <p className="text-sm text-muted-foreground font-medium">Total Employees</p>
                     </div>
                 </div>
-                <div className="bg-[#10b981] rounded-none p-4 text-white flex items-center shadow-sm">
-                    <div className="bg-white/20 p-3 rounded-none mr-4"><User className="w-8 h-8" /></div>
+                {/* Active/Present Placeholder */}
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center">
+                    <div className="bg-emerald-50 p-3 rounded-xl mr-4 text-emerald-600"><User className="w-8 h-8" /></div>
                     <div>
-                        <h3 className="text-2xl font-bold">{employees.filter(e => e.gender === 'Male').length}</h3>
-                        <p className="text-sm opacity-90">Male</p>
+                        <h3 className="text-2xl font-bold text-foreground">{employees.length}</h3>
+                        <p className="text-sm text-muted-foreground font-medium">Active Staff</p>
                     </div>
                 </div>
-                <div className="bg-[#d946ef] rounded-none p-4 text-white flex items-center shadow-sm">
-                    <div className="bg-white/20 p-3 rounded-none mr-4"><User className="w-8 h-8" /></div>
+                {/* On Leave Placeholder */}
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center">
+                    <div className="bg-amber-50 p-3 rounded-xl mr-4 text-amber-600"><User className="w-8 h-8" /></div>
                     <div>
-                        <h3 className="text-2xl font-bold">{employees.filter(e => e.gender === 'Female').length}</h3>
-                        <p className="text-sm opacity-90">Female</p>
+                        <h3 className="text-2xl font-bold text-foreground">0</h3>
+                        <p className="text-sm text-muted-foreground font-medium">On Leave</p>
                     </div>
                 </div>
             </div>
 
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-100/50 p-2 rounded-none">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-card p-4 rounded-2xl border border-border shadow-sm transition-shadow hover:shadow-md">
                 <div className="relative w-full md:w-1/2">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search className="h-4 w-4 text-gray-400" />
-                    </div>
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <input
-                        className="pl-10 w-full p-2 border border-gray-300 rounded-none outline-none text-sm bg-white"
-                        placeholder="Search.."
+                        className="pl-10 w-full p-2.5 border border-input rounded-xl outline-none text-sm bg-muted/50 focus:bg-background focus:ring-2 focus:ring-ring transition-colors"
+                        placeholder="Search employee..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <Button
-                    className="bg-[#4f46e5] hover:bg-[#4338ca] text-white flex items-center gap-2 px-6 rounded-none"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2 px-6 rounded-xl shadow-sm h-10"
                     onClick={() => setIsModalOpen(true)}
                 >
-                    <Plus className="w-4 h-4" /> NEW
+                    <Plus className="w-4 h-4" /> ADD NEW
                 </Button>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-none shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-[#1e293b] text-white uppercase text-xs font-semibold">
+                        <thead className="bg-accent text-accent-foreground uppercase text-xs font-semibold">
                             <tr>
-                                <th className="px-6 py-3">#</th>
-                                <th className="px-6 py-3">Emp ID</th>
-                                <th className="px-6 py-3">First Name</th>
-                                <th className="px-6 py-3">Last Name</th>
-                                <th className="px-6 py-3">DOB</th>
-                                <th className="px-6 py-3">DOJ</th>
+                                <th className="px-6 py-4">#</th>
+                                <th className="px-6 py-4">Emp ID</th>
+                                <th className="px-6 py-4">First Name</th>
+                                <th className="px-6 py-4">Last Name</th>
+                                <th className="px-6 py-4">DOB</th>
+                                <th className="px-6 py-4">DOJ</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading && <tr><td colSpan={6} className="text-center py-4">Loading...</td></tr>}
+                        <tbody className="divide-y divide-border">
+                            {loading && <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
                             {!loading && filteredEmployees.map((emp, index) => (
-                                <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-3 font-semibold text-gray-700">{index + 1}</td>
-                                    <td className="px-6 py-3 text-[#4f46e5] font-medium">{emp.empId}</td>
-                                    <td className="px-6 py-3 text-gray-600 font-medium">{emp.firstName}</td>
-                                    <td className="px-6 py-3 text-gray-500">{emp.lastName}</td>
-                                    <td className="px-6 py-3 text-gray-500">{emp.dob}</td>
-                                    <td className="px-6 py-3 text-gray-500">{emp.doj || emp.createdAt?.seconds ? new Date(emp.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                                <tr key={emp.id} className="hover:bg-muted/50 transition-colors border-b border-border last:border-0">
+                                    <td className="px-6 py-3 font-semibold text-foreground">{index + 1}</td>
+                                    <td className="px-6 py-3 text-primary font-medium">{emp.empId}</td>
+                                    <td className="px-6 py-3 text-foreground font-medium">{emp.firstName}</td>
+                                    <td className="px-6 py-3 text-muted-foreground">{emp.lastName}</td>
+                                    <td className="px-6 py-3 text-muted-foreground">{emp.dob}</td>
+                                    <td className="px-6 py-3 text-muted-foreground">{emp.doj || emp.createdAt?.seconds ? new Date(emp.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -180,7 +180,8 @@ export default function StaffPage() {
                             <Input
                                 value={formData.empId}
                                 onChange={(e) => setFormData({ ...formData, empId: e.target.value })}
-                                className="bg-gray-50 rounded-none"
+                                className="bg-gray-100 text-gray-500 rounded-md cursor-not-allowed"
+                                disabled
                             />
                         </div>
                         <div>
@@ -188,7 +189,8 @@ export default function StaffPage() {
                             <Input
                                 value={formData.firstName}
                                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                className="border-yellow-400 focus:ring-yellow-400 rounded-none"
+                                className="border-gray-200 focus:ring-primary rounded-md"
+                                placeholder="First Name"
                             />
                         </div>
                         <div>
@@ -196,13 +198,14 @@ export default function StaffPage() {
                             <Input
                                 value={formData.mobile}
                                 onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                                className="border-yellow-400 focus:ring-yellow-400 rounded-none"
+                                className="border-gray-200 focus:ring-primary rounded-md"
+                                placeholder="10-digit mobile"
                             />
                         </div>
                         <div>
                             <label className="text-sm font-semibold text-gray-700 mb-1 block">Gender</label>
                             <select
-                                className="w-full h-10 px-3 rounded-none border border-yellow-400 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+                                className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                                 value={formData.gender}
                                 onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                             >
@@ -217,13 +220,13 @@ export default function StaffPage() {
                                 type="date"
                                 value={formData.dob}
                                 onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                                className="border-gray-200 rounded-none"
+                                className="border-gray-200 rounded-md"
                             />
                         </div>
                         <div>
                             <label className="text-sm font-semibold text-gray-700 mb-1 block">Area of Specialization</label>
                             <select
-                                className="w-full h-10 px-3 rounded-none border border-yellow-400 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+                                className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                                 value={formData.specialization}
                                 onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
                             >
@@ -235,7 +238,7 @@ export default function StaffPage() {
                         <div>
                             <label className="text-sm font-semibold text-gray-700 mb-1 block">Designation</label>
                             <select
-                                className="w-full h-10 px-3 rounded-none border border-yellow-400 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
+                                className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white"
                                 value={formData.designation}
                                 onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                             >
@@ -250,21 +253,23 @@ export default function StaffPage() {
                                 type="number"
                                 value={formData.salary}
                                 onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                                className="border-yellow-400 focus:ring-yellow-400 rounded-none"
+                                className="border-gray-200 focus:ring-primary rounded-md"
+                                placeholder="0.00"
                             />
                         </div>
                         <div className="md:col-span-1">
                             <label className="text-sm font-semibold text-gray-700 mb-1 block">Address</label>
                             <textarea
-                                className="w-full h-20 px-3 py-2 rounded-none border border-yellow-400 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none"
+                                className="w-full h-20 px-3 py-2 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                                 value={formData.address}
                                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                placeholder="Residential Address"
                             />
                         </div>
                     </div>
 
                     <div className="flex justify-end pt-4 border-t">
-                        <Button className="bg-[#00bcd4] hover:bg-[#00acc1] text-white px-6 rounded-none" onClick={handleSave}>
+                        <Button className="bg-primary hover:bg-primary/90 text-white px-6 rounded-md shadow-lg shadow-pink-200/50" onClick={handleSave}>
                             <Save className="w-4 h-4 mr-2" /> Save
                         </Button>
                     </div>

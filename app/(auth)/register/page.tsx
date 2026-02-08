@@ -116,15 +116,15 @@ export default function RegisterPage() {
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-200"
+                            className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-pink-200/50 transition-all duration-300"
                         >
                             {loading ? "Creating Account..." : "Sign Up"}
                         </Button>
                     </div>
 
                     <div className="text-center text-sm">
-                        <span className="text-gray-600">Already have an account? </span>
-                        <Link href="/login" className="font-medium text-pink-600 hover:text-pink-500">
+                        <span className="text-gray-500">Already have an account? </span>
+                        <Link href="/login" className="font-medium text-primary hover:text-primary/90 transition-colors">
                             Sign in
                         </Link>
                     </div>

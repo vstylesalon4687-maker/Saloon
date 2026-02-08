@@ -105,158 +105,171 @@ export default function Dashboard() {
         };
     }, []);
 
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+    const COLORS = ['#db2777', '#d946ef', '#8b5cf6', '#ec4899', '#f472b6', '#c084fc'];
 
     return (
-        <div className="space-y-6 animate-fade-in p-2">
+        <div className="space-y-6 animate-fade-in p-4 lg:p-6">
 
             {/* --- TOP ROW CARDS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Services */}
-                <div className="bg-[#26c6da] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <Anchor className="w-8 h-8 text-white" />
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all">
+                    <div className="bg-blue-50/50 p-4 rounded-full mr-5 text-blue-600 group-hover:scale-110 transition-transform shadow-sm">
+                        <Anchor className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">{stats.services}</h3>
-                        <p className="text-sm opacity-90">Services</p>
+                        <h3 className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{stats.services}</h3>
+                        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Services</p>
                     </div>
                 </div>
 
                 {/* Products */}
-                <div className="bg-[#ef5350] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <ShoppingCart className="w-8 h-8 text-white" />
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all">
+                    <div className="bg-purple-50/50 p-4 rounded-full mr-5 text-purple-600 group-hover:scale-110 transition-transform shadow-sm">
+                        <ShoppingCart className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">{stats.products}</h3>
-                        <p className="text-sm opacity-90">Products</p>
+                        <h3 className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{stats.products}</h3>
+                        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Products</p>
                     </div>
                 </div>
 
                 {/* Customers */}
-                <div className="bg-[#ffa726] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <Users className="w-8 h-8 text-white" />
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all">
+                    <div className="bg-amber-50/50 p-4 rounded-full mr-5 text-amber-600 group-hover:scale-110 transition-transform shadow-sm">
+                        <Users className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">{stats.customers}</h3>
-                        <p className="text-sm opacity-90">Customers</p>
+                        <h3 className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{stats.customers}</h3>
+                        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Customers</p>
                     </div>
                 </div>
 
                 {/* Sales */}
-                <div className="bg-[#ff9800] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <Wallet className="w-8 h-8 text-white" />
+                <div className="bg-gradient-to-br from-primary to-pink-600 rounded-2xl p-6 shadow-lg hover-lift flex items-center min-h-[120px] group transition-all text-white">
+                    <div className="bg-white/20 p-4 rounded-full mr-5 text-white group-hover:scale-110 transition-transform shadow-inner">
+                        <Wallet className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">₹{stats.sales.toFixed(2)}</h3>
-                        <p className="text-sm opacity-90">Sales</p>
+                        <h3 className="text-3xl font-bold">₹{stats.sales.toFixed(2)}</h3>
+                        <p className="text-sm font-medium opacity-90 uppercase tracking-wide">Total Sales</p>
                     </div>
                 </div>
             </div>
 
-            {/* --- SECOND ROW (Appointments, Customers Table, Sales Details) --- */}
+            {/* --- SECOND ROW (Appointments, Clients, Sales Details) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Appointments Blueprint (Blue) */}
-                <div className="bg-[#1e88e5] rounded-none p-4 text-white shadow-md">
-                    <div className="flex items-center gap-3 mb-4">
-                        <Calendar className="w-8 h-8" />
+                {/* Appointments Blueprint */}
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-border hover:shadow-md transition-all">
+                    <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
+                        <div className="bg-blue-50 p-2.5 rounded-xl text-blue-600">
+                            <Calendar className="w-6 h-6" />
+                        </div>
                         <div>
-                            <h3 className="font-bold text-lg">Appointments</h3>
-                            <p className="text-xs opacity-80">Walkin/Phone/Online</p>
+                            <h3 className="font-bold text-lg text-foreground">Appointments</h3>
+                            <p className="text-xs text-muted-foreground font-medium">Walkin / Phone / Online</p>
                         </div>
                     </div>
-                    <div className="w-full">
-                        <div className="grid grid-cols-4 text-xs font-semibold mb-2 opacity-80 text-center">
-                            <div>Req.</div>
-                            <div>Appt.</div>
-                            <div>Billed</div>
-                            <div>Pending</div>
+                    <div className="w-full space-y-4">
+                        <div className="grid grid-cols-3 text-[10px] font-bold text-muted-foreground text-center uppercase tracking-wider bg-muted/30 p-2 rounded-lg">
+                            <div>Source</div>
+                            <div>Count</div>
+                            <div>Status</div>
                         </div>
                         {/* Rows */}
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {/* Walkin */}
-                            <div className="grid grid-cols-4 items-center text-center">
-                                <div className="flex justify-center"><User className="w-4 h-4" /></div>
-                                <div>{appointments.walkin}</div>
-                                <div>{appointments.walkin}</div>
-                                <div>0</div>
+                            <div className="grid grid-cols-3 items-center text-center text-sm p-2 hover:bg-muted/50 rounded-lg transition-colors">
+                                <div className="flex items-center gap-2 justify-center text-muted-foreground font-medium"><User className="w-4 h-4" /> Walk-in</div>
+                                <div className="font-bold text-foreground text-lg">{appointments.walkin}</div>
+                                <div className="text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-full w-max mx-auto">Active</div>
                             </div>
                             {/* Phone */}
-                            <div className="grid grid-cols-4 items-center text-center">
-                                <div className="flex justify-center"><Phone className="w-4 h-4" /></div>
-                                <div>{appointments.phone}</div>
-                                <div>{appointments.phone}</div>
-                                <div>0</div>
+                            <div className="grid grid-cols-3 items-center text-center text-sm p-2 hover:bg-muted/50 rounded-lg transition-colors">
+                                <div className="flex items-center gap-2 justify-center text-muted-foreground font-medium"><Phone className="w-4 h-4" /> Phone</div>
+                                <div className="font-bold text-foreground text-lg">{appointments.phone}</div>
+                                <div className="text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-full w-max mx-auto">Active</div>
                             </div>
                             {/* Online */}
-                            <div className="grid grid-cols-4 items-center text-center">
-                                <div className="flex justify-center"><Globe className="w-4 h-4" /></div>
-                                <div>{appointments.online}</div>
-                                <div>{appointments.online}</div>
-                                <div>0</div>
+                            <div className="grid grid-cols-3 items-center text-center text-sm p-2 hover:bg-muted/50 rounded-lg transition-colors">
+                                <div className="flex items-center gap-2 justify-center text-muted-foreground font-medium"><Globe className="w-4 h-4" /> Online</div>
+                                <div className="font-bold text-foreground text-lg">{appointments.online}</div>
+                                <div className="text-emerald-600 font-bold text-xs bg-emerald-50 px-2 py-1 rounded-full w-max mx-auto">Active</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Clients Table (Purple) */}
-                <div className="bg-[#8e24aa] rounded-none p-4 text-white shadow-md">
-                    <div className="flex items-center gap-3 mb-4">
-                        <Smartphone className="w-8 h-8" />
+                {/* Clients Table */}
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-border hover:shadow-md transition-all flex flex-col">
+                    <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
+                        <div className="bg-purple-50 p-2.5 rounded-xl text-purple-600">
+                            <Smartphone className="w-6 h-6" />
+                        </div>
                         <div>
-                            <h3 className="font-bold text-lg">New Clients</h3>
-                            <p className="text-xs opacity-80">Today's Registrations</p>
+                            <h3 className="font-bold text-lg text-foreground">New Clients</h3>
+                            <p className="text-xs text-muted-foreground font-medium">Today's Registrations</p>
                         </div>
                     </div>
-                    <div className="mt-4 text-center text-xs opacity-80">
-                        {stats.customers > 0 ? `${stats.customers} Customers Found` : 'No new customers today'}
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center border-2 border-dashed border-border rounded-xl bg-muted/20">
+                        <div className="bg-background p-4 rounded-full shadow-sm mb-3">
+                            <Users className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <p className="text-2xl font-bold text-foreground mb-1">{stats.customers}</p>
+                        <p className="text-sm text-muted-foreground font-medium">
+                            {stats.customers > 0 ? "New customers added today" : "No new customers yet"}
+                        </p>
                     </div>
                 </div>
 
-                {/* Sales Details (Orange) */}
-                <div className="bg-[#f4511e] rounded-none p-4 text-white shadow-md">
-                    <div className="flex items-center gap-3 mb-4">
-                        <CreditCard className="w-8 h-8" />
+                {/* Sales Details */}
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-border hover:shadow-md transition-all flex flex-col">
+                    <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
+                        <div className="bg-orange-50 p-2.5 rounded-xl text-orange-600">
+                            <CreditCard className="w-6 h-6" />
+                        </div>
                         <div>
-                            <h3 className="font-bold text-lg">Daily Sales</h3>
-                            <p className="text-xs opacity-80">Today's Revenue</p>
+                            <h3 className="font-bold text-lg text-foreground">Daily Revenue</h3>
+                            <p className="text-xs text-muted-foreground font-medium">Financial Snapshot</p>
                         </div>
                     </div>
-                    <div className="space-y-4">
-                        {/* Dynamic breakdown could go here */}
-                        <div className="flex justify-between items-center bg-white/10 p-2 rounded-none">
-                            <span>Total Sales</span>
-                            <span className="font-bold">₹{stats.sales.toFixed(2)}</span>
+                    <div className="space-y-4 flex-1">
+                        <div className="bg-gradient-to-r from-background to-muted/50 p-5 rounded-xl border border-border shadow-sm">
+                            <span className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">Total Generated</span>
+                            <span className="font-mono font-bold text-foreground text-3xl block">₹{stats.sales.toFixed(2)}</span>
+                            <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-600">
+                                <TrendingUp className="w-3 h-3" /> +12% from yesterday
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* --- BOTTOM ROW (Charts) --- */}
+            {/* --- BOTTOM ROW (Charts) --- */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Sales Growth Chart */}
-                <div className="bg-white p-4 rounded-none shadow-sm border border-gray-200">
-                    <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-blue-500" /> Sales Growth
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-border">
+                    <h3 className="font-bold text-foreground mb-6 flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-primary" /> Sales Growth
                     </h3>
                     <div className="h-64">
                         {salesGrowthData.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={salesGrowthData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                                    <YAxis tick={{ fontSize: 12 }} />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Line type="monotone" dataKey="sales" stroke="#8884d8" strokeWidth={2} name="Sales (₹)" />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                                    <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                                    <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                    <Legend iconType="circle" />
+                                    <Line type="monotone" dataKey="sales" stroke="#C2185B" strokeWidth={3} dot={{ r: 4, fill: '#C2185B' }} activeDot={{ r: 6 }} name="Sales (₹)" />
                                 </LineChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="h-full flex items-center justify-center bg-gray-50 rounded-none text-gray-400 text-sm">
+                            <div className="h-full flex items-center justify-center bg-muted/30 rounded-xl text-muted-foreground text-sm">
                                 No sales data available yet
                             </div>
                         )}
@@ -264,9 +277,9 @@ export default function Dashboard() {
                 </div>
 
                 {/* Revenue Stream Chart */}
-                <div className="bg-white p-4 rounded-none shadow-sm border border-gray-200">
-                    <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
-                        <Banknote className="w-5 h-5 text-green-500" /> Revenue Stream
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 shadow-sm border border-border">
+                    <h3 className="font-bold text-foreground mb-6 flex items-center gap-2">
+                        <Banknote className="w-5 h-5 text-emerald-500" /> Revenue Stream
                     </h3>
                     <div className="h-64">
                         {revenueStreamData.length > 0 ? (
@@ -279,19 +292,24 @@ export default function Dashboard() {
                                         labelLine={false}
                                         label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
                                         outerRadius={80}
+                                        innerRadius={40}
                                         fill="#8884d8"
                                         dataKey="value"
+                                        paddingAngle={5}
                                     >
                                         {revenueStreamData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="white" strokeWidth={2} />
                                         ))}
                                     </Pie>
-                                    <Tooltip formatter={(value: any) => `₹${Number(value).toFixed(2)}`} />
-                                    <Legend />
+                                    <Tooltip
+                                        formatter={(value: any) => `₹${Number(value).toFixed(2)}`}
+                                        contentStyle={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                    />
+                                    <Legend iconType="circle" />
                                 </PieChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="h-full flex items-center justify-center bg-gray-50 rounded-none text-gray-400 text-sm">
+                            <div className="h-full flex items-center justify-center bg-muted/30 rounded-xl text-muted-foreground text-sm">
                                 No revenue data available yet
                             </div>
                         )}

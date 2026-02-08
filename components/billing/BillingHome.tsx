@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { cn } from "@/lib/utils";
 
 interface BillingHomeProps {
     onCreate: () => void;
@@ -115,7 +116,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                     .bill-info strong { display: inline-block; width: 120px; }
                     table { width: 100%; border-collapse: collapse; margin: 20px 0; }
                     th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    th { background-color: #f2f2f2; font-weight: bold; }
+                    th { background-color: #fce7f3; font-weight: bold; color: #831843; }
                     .text-right { text-align: right; }
                     .totals { margin-top: 20px; text-align: right; font-size: 14px; }
                     .totals div { margin: 5px 0; }
@@ -183,8 +184,8 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                     <p>Thank you for visiting VStyles Salon - Visit us again!</p>
                 </div>
                 <div class="no-print" style="text-align: center; margin-top: 20px;">
-                    <button onclick="window.print()" style="padding: 10px 20px; background: #6b46c1; color: white; border: none; cursor: pointer; font-size: 16px;">Print Bill</button>
-                    <button onclick="window.close()" style="padding: 10px 20px; background: #dc2626; color: white; border: none; cursor: pointer; font-size: 16px; margin-left: 10px;">Close</button>
+                    <button onclick="window.print()" style="padding: 10px 20px; background: #db2777; color: white; border: none; cursor: pointer; font-size: 16px; border-radius: 6px;">Print Bill</button>
+                    <button onclick="window.close()" style="padding: 10px 20px; background: #dc2626; color: white; border: none; cursor: pointer; font-size: 16px; margin-left: 10px; border-radius: 6px;">Close</button>
                 </div>
             </body>
             </html>
@@ -200,11 +201,11 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in p-4 bg-gray-50 min-h-screen">
+        <div className="space-y-6 animate-in p-4 min-h-screen">
             {/* View Modal */}
             {selectedBill && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedBill(null)}>
-                    <div className="bg-white rounded-none shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
                             <h2 className="text-xl font-bold text-gray-800">Bill Details - #{selectedBill.id.substring(0, 8).toUpperCase()}</h2>
                             <button onClick={() => setSelectedBill(null)} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
@@ -231,8 +232,8 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                             </div>
 
                             {/* Items Table */}
-                            <table className="w-full border-collapse border border-gray-200 mb-6">
-                                <thead className="bg-gray-100">
+                            <table className="w-full border-collapse border border-gray-200 mb-6 rounded-lg overflow-hidden">
+                                <thead className="bg-pink-50">
                                     <tr>
                                         <th className="border border-gray-200 px-4 py-2 text-left">Service</th>
                                         <th className="border border-gray-200 px-4 py-2 text-left">Staff</th>
@@ -278,10 +279,10 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
 
                             {/* Actions */}
                             <div className="mt-6 flex justify-end gap-3">
-                                <Button onClick={() => setSelectedBill(null)} className="bg-gray-500 hover:bg-gray-600 text-white rounded-none">
+                                <Button onClick={() => setSelectedBill(null)} className="bg-gray-500 hover:bg-gray-600 text-white rounded-md">
                                     Close
                                 </Button>
-                                <Button onClick={() => handlePrint(selectedBill)} className="bg-[#6b46c1] hover:bg-[#553c9a] text-white rounded-none flex items-center gap-2">
+                                <Button onClick={() => handlePrint(selectedBill)} className="bg-primary hover:bg-primary/90 text-white rounded-md flex items-center gap-2">
                                     <Printer className="w-4 h-4" /> Print Bill
                                 </Button>
                             </div>
@@ -292,97 +293,102 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
 
             {/* Top Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Sales - Green */}
-                <div className="bg-[#48bb78] rounded-none p-4 text-white flex justify-between items-center shadow-sm">
+                {/* Total Sales */}
+                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
                     <div>
-                        <p className="text-sm opacity-90 font-medium">Total Sales</p>
-                        <h3 className="text-xl md:text-2xl font-bold">₹{totalSales.toFixed(2)}</h3>
+                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Sales</p>
+                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalSales.toFixed(2)}</h3>
                     </div>
-                    <div className="bg-white/20 p-2 rounded-none">
-                        <BarChart3 className="w-6 h-6" />
+                    <div className="bg-emerald-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                        <BarChart3 className="w-6 h-6 text-emerald-500" />
                     </div>
                 </div>
 
-                {/* Total Cash - Blue */}
-                <div className="bg-[#00b5e9] rounded-none p-4 text-white flex justify-between items-center shadow-sm">
+                {/* Total Cash */}
+                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
                     <div>
-                        <p className="text-sm opacity-90 font-medium">Total Cash</p>
-                        <h3 className="text-xl md:text-2xl font-bold">₹{totalCash.toFixed(2)}</h3>
+                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Cash</p>
+                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalCash.toFixed(2)}</h3>
                     </div>
-                    <div className="bg-white/20 p-2 rounded-none">
-                        <CreditCard className="w-6 h-6" />
+                    <div className="bg-blue-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                        <CreditCard className="w-6 h-6 text-blue-500" />
                     </div>
                 </div>
 
-                {/* Total Advance - Orange */}
-                <div className="bg-[#fbbf24] rounded-none p-4 text-white flex justify-between items-center shadow-sm">
+                {/* Total Advance */}
+                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
                     <div>
-                        <p className="text-sm opacity-90 font-medium">Total Advance</p>
-                        <h3 className="text-xl md:text-2xl font-bold">₹{totalAdvance.toFixed(2)}</h3>
+                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Advance</p>
+                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalAdvance.toFixed(2)}</h3>
                     </div>
-                    <div className="bg-white/20 p-2 rounded-none">
-                        <Tag className="w-6 h-6" />
+                    <div className="bg-amber-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                        <Tag className="w-6 h-6 text-amber-500" />
                     </div>
                 </div>
 
-                {/* Total Expenses - Pink */}
-                <div className="bg-[#f687b3] rounded-none p-4 text-white flex justify-between items-center shadow-sm">
+                {/* Total Expenses */}
+                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
                     <div>
-                        <p className="text-sm opacity-90 font-medium">Total Expenses</p>
-                        <h3 className="text-xl md:text-2xl font-bold">₹{totalExpenses.toFixed(2)}</h3>
+                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Expenses</p>
+                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalExpenses.toFixed(2)}</h3>
                     </div>
-                    <div className="bg-white/20 p-2 rounded-none">
-                        <PieChart className="w-6 h-6" />
+                    <div className="bg-rose-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
+                        <PieChart className="w-6 h-6 text-rose-500" />
                     </div>
                 </div>
             </div>
 
             {/* Toolbar */}
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-2">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-2 bg-card p-4 rounded-2xl border border-border shadow-sm mb-6">
                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
                     {/* Calendar Filter Button */}
                     <div className="relative">
                         <Button
                             onClick={() => setShowDateFilter(!showDateFilter)}
-                            className={`${showDateFilter || startDate || endDate ? 'bg-[#6b46c1]' : 'bg-[#4a5568]'} hover:bg-gray-700 text-white flex items-center gap-2 px-4 shadow-sm w-full sm:w-auto justify-center rounded-none`}
+                            className={cn(
+                                "flex items-center gap-2 px-4 w-full sm:w-auto justify-center rounded-xl transition-all border border-input h-10 shadow-sm",
+                                showDateFilter || startDate || endDate ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-accent'
+                            )}
                         >
-                            <Calendar className="w-4 h-4 text-orange-400" /> CALENDAR
-                            {(startDate || endDate) && <span className="ml-1 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">●</span>}
+                            <Calendar className={cn("w-4 h-4", showDateFilter || startDate || endDate ? "text-primary-foreground" : "text-muted-foreground")} />
+                            <span className="font-medium">CALENDAR</span>
+                            {(startDate || endDate) && <span className="ml-1 bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full">●</span>}
                         </Button>
 
                         {/* Date Filter Dropdown */}
                         {showDateFilter && (
-                            <div className="absolute top-12 left-0 bg-white border border-gray-300 shadow-xl rounded-none p-4 z-50 w-80">
-                                <h3 className="font-bold text-gray-800 mb-3 text-sm">Filter by Date Range</h3>
+                            <div className="absolute top-12 left-0 bg-popover border border-border shadow-xl rounded-2xl p-4 z-50 w-80 animate-in fade-in zoom-in-95">
+                                <h3 className="font-bold text-foreground mb-3 text-sm">Filter by Date Range</h3>
                                 <div className="space-y-3">
                                     <div>
-                                        <label className="text-xs text-gray-600 block mb-1">Start Date</label>
+                                        <label className="text-xs text-muted-foreground block mb-1">Start Date</label>
                                         <input
                                             type="date"
                                             value={startDate}
                                             onChange={(e) => setStartDate(e.target.value)}
-                                            className="w-full border border-gray-300 rounded-none p-2 text-sm"
+                                            className="w-full border border-input rounded-xl p-2 text-sm focus:ring-ring focus:border-ring bg-background"
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-gray-600 block mb-1">End Date</label>
+                                        <label className="text-xs text-muted-foreground block mb-1">End Date</label>
                                         <input
                                             type="date"
                                             value={endDate}
                                             onChange={(e) => setEndDate(e.target.value)}
-                                            className="w-full border border-gray-300 rounded-none p-2 text-sm"
+                                            className="w-full border border-input rounded-xl p-2 text-sm focus:ring-ring focus:border-ring bg-background"
                                         />
                                     </div>
                                     <div className="flex gap-2 pt-2">
                                         <Button
                                             onClick={handleClearDateFilter}
-                                            className="flex-1 bg-gray-500 hover:bg-gray-600 text-white rounded-none text-xs h-8"
+                                            variant="outline"
+                                            className="flex-1 rounded-xl h-9 text-xs"
                                         >
                                             Clear
                                         </Button>
                                         <Button
                                             onClick={() => setShowDateFilter(false)}
-                                            className="flex-1 bg-[#6b46c1] hover:bg-[#553c9a] text-white rounded-none text-xs h-8"
+                                            className="flex-1 rounded-xl h-9 text-xs"
                                         >
                                             Apply
                                         </Button>
@@ -394,11 +400,9 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
 
                     {/* Search Box */}
                     <div className="relative w-full sm:w-80">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search className="h-4 w-4 text-gray-500" />
-                        </div>
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none" />
                         <input
-                            className="w-full pl-10 p-2 border border-gray-300 rounded-none outline-none text-sm bg-white focus:border-blue-500 transition-colors h-10"
+                            className="w-full pl-10 p-2.5 border border-input rounded-xl outline-none text-sm bg-muted/50 focus:border-ring focus:ring-1 focus:ring-ring transition-colors h-10"
                             placeholder="Search by name, phone or ID"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -407,57 +411,57 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                    <Button className="hidden md:flex bg-[#4a5568] hover:bg-gray-700 text-white items-center gap-2 px-4 shadow-sm rounded-none">
-                        <LayoutDashboard className="w-4 h-4" /> DASHBOARD
+                    <Button variant="outline" className="hidden md:flex items-center gap-2 px-4 shadow-sm rounded-xl border-input h-10">
+                        <LayoutDashboard className="w-4 h-4 text-muted-foreground" /> DASHBOARD
                     </Button>
                     <Button
                         onClick={onCreate}
-                        className="bg-[#6b46c1] hover:bg-[#553c9a] text-white flex items-center gap-2 px-6 shadow-sm font-bold w-full md:w-auto justify-center rounded-none"
+                        className="bg-primary hover:bg-primary/90 text-white flex items-center gap-2 px-6 shadow-md shadow-pink-200/20 font-bold w-full md:w-auto justify-center rounded-xl hover:scale-[1.02] transition-transform h-10"
                     >
-                        <Plus className="w-5 h-5" /> NEW
+                        <Plus className="w-5 h-5" /> NEW BILL
                     </Button>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-none shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-[#334155] text-white uppercase text-xs font-semibold">
+                        <thead className="bg-accent text-accent-foreground uppercase text-xs font-semibold">
                             <tr>
-                                <th className="px-4 py-3 whitespace-nowrap">Invoice</th>
-                                <th className="px-4 py-3 whitespace-nowrap">Date</th>
-                                <th className="px-4 py-3 whitespace-nowrap">Customer</th>
-                                <th className="px-4 py-3 whitespace-nowrap">Mob</th>
-                                <th className="px-4 py-3 whitespace-nowrap">Staff</th>
-                                <th className="px-4 py-3 text-right whitespace-nowrap">Total</th>
-                                <th className="px-4 py-3 text-center whitespace-nowrap">PayMode</th>
-                                <th className="px-4 py-3 text-center whitespace-nowrap">Status</th>
-                                <th className="px-4 py-3 text-center whitespace-nowrap">Action</th>
+                                <th className="px-6 py-4 whitespace-nowrap">Invoice</th>
+                                <th className="px-6 py-4 whitespace-nowrap">Date</th>
+                                <th className="px-6 py-4 whitespace-nowrap">Customer</th>
+                                <th className="px-6 py-4 whitespace-nowrap">Mob</th>
+                                <th className="px-6 py-4 whitespace-nowrap">Staff</th>
+                                <th className="px-6 py-4 text-right whitespace-nowrap">Total</th>
+                                <th className="px-6 py-4 text-center whitespace-nowrap">PayMode</th>
+                                <th className="px-6 py-4 text-center whitespace-nowrap">Status</th>
+                                <th className="px-6 py-4 text-center whitespace-nowrap">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading && <tr><td colSpan={9} className="text-center py-4 text-gray-500">Loading...</td></tr>}
-                            {!loading && filteredInvoices.length === 0 && <tr><td colSpan={9} className="text-center py-4 text-gray-500">No invoices found</td></tr>}
+                        <tbody className="divide-y divide-border">
+                            {loading && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
+                            {!loading && filteredInvoices.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">No invoices found</td></tr>}
                             {!loading && filteredInvoices.map((inv, idx) => (
-                                <tr key={inv.id} className="hover:bg-blue-50 transition-colors">
-                                    <td className="px-4 py-2 text-gray-600 font-medium">#{inv.id.substring(0, 6).toUpperCase()}</td>
-                                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{inv.date}</td>
-                                    <td className="px-4 py-2 text-gray-800 font-semibold">{inv.customerName || 'Walk-in'}</td>
-                                    <td className="px-4 py-2 text-gray-600">{inv.customerPhone || '-'}</td>
-                                    <td className="px-4 py-2 text-gray-600 text-xs text-center">
+                                <tr key={inv.id} className="hover:bg-muted/50 transition-colors">
+                                    <td className="px-6 py-4 text-muted-foreground font-medium">#{inv.id.substring(0, 6).toUpperCase()}</td>
+                                    <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{inv.date}</td>
+                                    <td className="px-6 py-4 text-foreground font-semibold">{inv.customerName || 'Walk-in'}</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{inv.customerPhone || '-'}</td>
+                                    <td className="px-6 py-4 text-muted-foreground text-xs text-center">
                                         {inv.items && inv.items.length > 0 && inv.items[0].staff ? 'Assigned' : '-'}
                                     </td>
-                                    <td className="px-4 py-2 text-right text-gray-800 font-bold">₹{Number(inv.grandTotal).toFixed(2)}</td>
-                                    <td className="px-4 py-2 text-center text-xs text-gray-500 uppercase">{inv.paymentMethod || 'Cash'}</td>
-                                    <td className="px-4 py-2 text-center">
-                                        <span className="px-2 py-1 rounded-none bg-green-100 text-green-700 text-xs font-semibold">Paid</span>
+                                    <td className="px-6 py-4 text-right text-foreground font-bold">₹{Number(inv.grandTotal).toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-center text-xs text-muted-foreground uppercase">{inv.paymentMethod || 'Cash'}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold border border-green-200">Paid</span>
                                     </td>
-                                    <td className="px-4 py-2 text-center flex justify-center gap-2">
-                                        <Button size="sm" onClick={() => handleView(inv)} className="bg-[#00bcd4] hover:bg-[#00acc1] text-white h-7 px-3 text-xs rounded-none shadow-sm">
+                                    <td className="px-6 py-4 text-center flex justify-center gap-2">
+                                        <Button size="sm" onClick={() => handleView(inv)} variant="secondary" className="h-8 px-3 text-xs rounded-lg shadow-sm">
                                             View
                                         </Button>
-                                        <Button size="sm" onClick={() => handlePrint(inv)} className="bg-[#00bcd4] hover:bg-[#00acc1] text-white h-7 px-2 text-xs rounded-none shadow-sm flex items-center gap-1">
+                                        <Button size="sm" onClick={() => handlePrint(inv)} className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 text-xs rounded-lg shadow-sm flex items-center gap-1">
                                             <Printer className="w-3 h-3" /> Print
                                         </Button>
                                     </td>

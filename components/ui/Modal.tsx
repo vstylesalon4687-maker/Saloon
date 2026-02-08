@@ -31,15 +31,15 @@ export function Modal({ isOpen, onClose, title, children, className = "", varian
                     "bg-white overflow-hidden flex flex-col shadow-xl animate-in duration-300",
                     isDrawer
                         ? "w-full md:w-[65%] h-full slide-in-from-right border-l border-gray-200"
-                        : "w-full max-w-4xl max-h-[90vh] rounded-none zoom-in-95 my-auto mx-4",
+                        : "w-full max-w-4xl max-h-[90vh] rounded-lg zoom-in-95 my-auto mx-4",
                     className
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
                 {title && (
-                    <div className="flex items-center justify-between p-4 border-b shrink-0 bg-white z-10">
-                        <h2 className="text-lg font-semibold">{title}</h2>
-                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 hover:bg-gray-100 rounded-none">
+                    <div className="flex items-center justify-between p-4 border-b shrink-0 bg-white z-10 border-pink-100">
+                        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 hover:bg-gray-100 rounded-full">
                             <X className="w-4 h-4" />
                         </Button>
                     </div>
@@ -47,7 +47,7 @@ export function Modal({ isOpen, onClose, title, children, className = "", varian
                 {/* Special headerless close button for drawer if title is empty */}
                 {!title && isDrawer && (
                     <div className="absolute top-2 right-2 z-50">
-                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 bg-white/50 hover:bg-gray-100 rounded-none shadow-sm border">
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 bg-white/50 hover:bg-gray-100 rounded-full shadow-sm border">
                             <X className="w-4 h-4" />
                         </Button>
                     </div>

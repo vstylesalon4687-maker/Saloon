@@ -26,7 +26,7 @@ function BillingPageContent() {
 
 export default function BillingPage() {
     return (
-        <Suspense fallback={<div className="p-4 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600"></div></div>}>
+        <Suspense fallback={<div className="p-4 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
             <BillingPageContent />
         </Suspense>
     );

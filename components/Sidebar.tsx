@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Receipt, Users, CreditCard, UserCog, LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -16,6 +16,13 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose, isCollapsed, toggleCollapse }: SidebarProps) {
     const pathname = usePathname();
+    const [isHovered, setIsHovered] = useState(false);
+
+    // Effective state: expanded if not collapsed OR if hovered
+    // On mobile, always expanded width when open
+    const isExpanded = isOpen || (!isCollapsed) || isHovered;
+    // On desktop, use collapsed width if not hovered and isCollapsed is true
+    const currentWidth = (isCollapsed && !isHovered && !isOpen) ? "w-20" : "w-64";
 
     // Automatically close sidebar when route changes (mobile)
     useEffect(() => {
@@ -51,22 +58,24 @@ export function Sidebar({ isOpen, onClose, isCollapsed, toggleCollapse }: Sideba
             />
             <aside
                 className={cn(
-                    "fixed left-0 top-0 z-40 h-screen border-r border-gray-800 bg-[#162e42] transition-all duration-300 ease-in-out pt-0 flex flex-col",
+                    "fixed left-0 top-0 z-40 h-screen border-r border-border bg-sidebar transition-all duration-300 ease-in-out pt-0 flex flex-col shadow-none",
                     isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-                    isCollapsed ? "w-20" : "w-64"
+                    currentWidth
                 )}
+                onMouseEnter={() => setIsHovered(true)}
+                onMouseLeave={() => setIsHovered(false)}
             >
                 {/* Mobile Close */}
                 <div className="flex justify-end p-2 md:hidden">
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:bg-gray-800 rounded-none">
+                    <button onClick={onClose} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
                 {/* Logo Area */}
-                <div className="flex flex-col items-center justify-center py-6 border-b border-gray-700/50">
-                    <div className={cn("relative transition-all duration-300", isCollapsed ? "w-10 h-10" : "w-40 h-20")}>
-                        <img src="/vstyles-logo.png" alt="VStyles" className="object-contain w-full h-full invert brightness-0 grayscale" style={{ filter: 'brightness(0) invert(1)' }} />
+                <div className="flex flex-col items-center justify-center py-8">
+                    <div className={cn("relative transition-all duration-300", (!isExpanded && !isOpen) ? "w-20 h-20" : "w-64 h-32")}>
+                        <img src="/vstyles-logo.png" alt="VStyles" className="object-contain w-full h-full" />
                     </div>
                 </div>
 
@@ -79,17 +88,19 @@ export function Sidebar({ isOpen, onClose, isCollapsed, toggleCollapse }: Sideba
                             <li key={link.href}>
                                 <Link
                                     href={link.href}
-                                    title={isCollapsed ? link.label : ""}
+                                    title={!isExpanded ? link.label : ""}
                                     className={cn(
-                                        "flex items-center p-3 text-gray-300 transition-all duration-200 hover:text-white group",
-                                        isCollapsed ? "justify-center rounded-none" : "rounded-none",
-                                        isActive && "bg-pink-500 text-white font-medium shadow-md",
-                                        !isActive && "hover:bg-white/5"
+                                        "flex items-center px-4 py-3 transition-all duration-200 group mx-3 mb-1",
+                                        (!isExpanded && !isOpen) ? "justify-center rounded-xl" : "rounded-xl",
+                                        isActive
+                                            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium relative overflow-hidden"
+                                            : "text-sidebar-foreground hover:bg-white hover:text-foreground",
                                     )}
                                 >
-                                    <Icon className={cn("h-6 w-6 shrink-0 transition-colors", isActive ? "text-white" : "text-gray-400 group-hover:text-white")} />
-                                    {!isCollapsed && (
-                                        <span className="ml-3 truncate">{link.label}</span>
+                                    {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />}
+                                    <Icon className={cn("h-5 w-5 shrink-0 transition-colors", isActive ? "text-primary" : "text-gray-400 group-hover:text-foreground")} />
+                                    {(isExpanded || isOpen) && (
+                                        <span className="ml-3 truncate text-sm animate-slide-in-left">{link.label}</span>
                                     )}
                                 </Link>
                             </li>
@@ -98,30 +109,17 @@ export function Sidebar({ isOpen, onClose, isCollapsed, toggleCollapse }: Sideba
                 </ul>
 
                 {/* Bottom Actions */}
-                <div className="mt-auto p-3 border-t border-gray-700/50 space-y-2">
-                    {/* Toggle Button (Desktop Only) */}
-                    <button
-                        onClick={toggleCollapse}
-                        className={cn(
-                            "hidden md:flex items-center w-full p-3 text-gray-400 hover:bg-white/5 hover:text-white transition-colors rounded-none",
-                            isCollapsed ? "justify-center" : ""
-                        )}
-                        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                    >
-                        {isCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-                        {!isCollapsed && <span className="ml-3">Collapse</span>}
-                    </button>
-
+                <div className="mt-auto p-3 border-t border-gray-100 space-y-2">
                     <button
                         onClick={handleSignOut}
                         className={cn(
-                            "flex w-full items-center p-3 text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors rounded-none group",
-                            isCollapsed ? "justify-center" : ""
+                            "flex w-full items-center p-3 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors rounded-lg group",
+                            (!isExpanded && !isOpen) ? "justify-center" : ""
                         )}
-                        title={isCollapsed ? "Sign Out" : ""}
+                        title={!isExpanded ? "Sign Out" : ""}
                     >
-                        <LogOut className="h-5 w-5 shrink-0 group-hover:text-red-400" />
-                        {!isCollapsed && <span className="ml-3 font-medium">Sign Out</span>}
+                        <LogOut className="h-5 w-5 shrink-0 group-hover:text-red-500" />
+                        {(isExpanded || isOpen) && <span className="ml-3 font-medium animate-slide-in-left">Sign Out</span>}
                     </button>
                 </div>
             </aside>

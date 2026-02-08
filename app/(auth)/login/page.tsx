@@ -95,14 +95,14 @@ export default function LoginPage() {
                                 id="remember-me"
                                 name="remember-me"
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-600"
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                             />
-                            <label htmlFor="remember-me" className="ml-2 block text-gray-900">
+                            <label htmlFor="remember-me" className="ml-2 block text-gray-700">
                                 Remember me
                             </label>
                         </div>
                         <div className="text-sm">
-                            <a href="#" className="font-medium text-pink-600 hover:text-pink-500">
+                            <a href="#" className="font-medium text-primary hover:text-primary/90 transition-colors">
                                 Forgot password?
                             </a>
                         </div>
@@ -112,15 +112,15 @@ export default function LoginPage() {
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-200"
+                            className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-pink-200/50 transition-all duration-300"
                         >
                             {loading ? "Signing in..." : "Sign in"}
                         </Button>
                     </div>
 
                     <div className="text-center text-sm">
-                        <span className="text-gray-600">Don't have an account? </span>
-                        <Link href="/register" className="font-medium text-pink-600 hover:text-pink-500">
+                        <span className="text-gray-500">Don't have an account? </span>
+                        <Link href="/register" className="font-medium text-primary hover:text-primary/90 transition-colors">
                             Sign up
                         </Link>
                     </div>

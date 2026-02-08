@@ -12,16 +12,16 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             <button
                 ref={ref}
                 className={cn(
-                    "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+                    "inline-flex items-center justify-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
                     {
-                        'bg-pink-500 text-white hover:bg-pink-600 shadow-md': variant === 'default',
-                        'border border-gray-200 bg-white hover:bg-gray-100 text-gray-900': variant === 'outline',
-                        'hover:bg-gray-100 text-gray-700': variant === 'ghost',
-                        'bg-red-500 text-white hover:bg-red-600': variant === 'destructive',
-                        'bg-gray-500 text-white hover:bg-gray-600': variant === 'secondary',
+                        'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm transition-colors': variant === 'default',
+                        'bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm': variant === 'destructive',
+                        'border border-input bg-background hover:bg-accent hover:text-accent-foreground': variant === 'outline',
+                        'bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm': variant === 'secondary',
+                        'hover:bg-accent hover:text-accent-foreground': variant === 'ghost',
                         'h-10 px-4 py-2': size === 'default',
-                        'h-9 rounded-md px-3 text-xs': size === 'sm',
-                        'h-11 rounded-md px-8 text-base': size === 'lg',
+                        'h-9 rounded-md px-3': size === 'sm',
+                        'h-11 rounded-md px-8': size === 'lg',
                         'h-10 w-10': size === 'icon',
                     },
                     className

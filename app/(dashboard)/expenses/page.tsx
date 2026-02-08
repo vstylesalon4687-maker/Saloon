@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { Plus, Search, MoreVertical, TrendingDown, Wallet, PieChart, CreditCard, Banknote, Calendar, Save, TrendingUp } from "lucide-react";
+import { Plus, Search, MoreVertical, TrendingDown, Wallet, PieChart, CreditCard, Banknote, Calendar, Save, TrendingUp, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { db } from "@/lib/firebase";
@@ -66,52 +66,53 @@ export default function ExpensesPage() {
         <div className="space-y-6 animate-fade-in p-2">
 
             {/* --- TOP ROW METRICS --- */}
+            {/* --- TOP ROW METRICS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Expenses */}
-                <div className="bg-[#ef5350] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <TrendingDown className="w-8 h-8 text-white" />
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
+                    <div className="bg-rose-50 p-3 rounded-full mr-4 text-rose-600">
+                        <TrendingDown className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">{totalExpenses.toLocaleString()}</h3>
-                        <p className="text-sm opacity-90">Total Expenses</p>
+                        <h3 className="text-2xl font-bold text-foreground">₹{totalExpenses.toLocaleString()}</h3>
+                        <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
                     </div>
                 </div>
 
                 {/* Pending */}
-                <div className="bg-[#ffa726] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <Calendar className="w-8 h-8 text-white" />
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
+                    <div className="bg-amber-50 p-3 rounded-full mr-4 text-amber-600">
+                        <Calendar className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">
-                            {expenses.filter(e => e.status === 'Pending').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()}
+                        <h3 className="text-2xl font-bold text-foreground">
+                            ₹{expenses.filter(e => e.status === 'Pending').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()}
                         </h3>
-                        <p className="text-sm opacity-90">Pending Bills</p>
+                        <p className="text-sm font-medium text-muted-foreground">Pending Bills</p>
                     </div>
                 </div>
 
                 {/* Categories */}
-                <div className="bg-[#26c6da] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <PieChart className="w-8 h-8 text-white" />
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
+                    <div className="bg-teal-50 p-3 rounded-full mr-4 text-teal-600">
+                        <PieChart className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">
+                        <h3 className="text-2xl font-bold text-foreground">
                             {new Set(expenses.map(e => e.category)).size}
                         </h3>
-                        <p className="text-sm opacity-90">Categories</p>
+                        <p className="text-sm font-medium text-muted-foreground">Active Categories</p>
                     </div>
                 </div>
 
-                {/* Monthly Budget */}
-                <div className="bg-[#7e57c2] rounded-none p-4 text-white flex items-center shadow-md min-h-[100px]">
-                    <div className="bg-white/20 p-3 rounded-none mr-4">
-                        <Wallet className="w-8 h-8 text-white" />
+                {/* Today's Expense Placeholder - Blue */}
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
+                    <div className="bg-blue-50 p-3 rounded-full mr-4 text-blue-600">
+                        <Banknote className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold">-</h3>
-                        <p className="text-sm opacity-90">Budget Used</p>
+                        <h3 className="text-2xl font-bold text-foreground">₹0</h3>
+                        <p className="text-sm font-medium text-muted-foreground">Today's Spend</p>
                     </div>
                 </div>
             </div>
@@ -119,47 +120,50 @@ export default function ExpensesPage() {
             {/* --- MIDDLE SECTION --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Category Breakdown (Purple) */}
-                <div className="bg-[#5e35b1] rounded-none p-4 text-white shadow-md">
-                    <div className="flex justify-between items-start mb-4">
+                {/* Category Breakdown */}
+                <div className="bg-card rounded-2xl p-6 shadow-sm border border-border">
+                    <div className="flex justify-between items-start mb-6 border-b border-border pb-4">
                         <div className="flex items-center gap-3">
-                            <PieChart className="w-8 h-8" />
+                            <div className="bg-purple-50 p-2.5 rounded-xl text-purple-600">
+                                <PieChart className="w-6 h-6" />
+                            </div>
                             <div>
-                                <h3 className="font-bold text-lg">Categories</h3>
-                                <p className="text-xs opacity-80">Top 5 by Amount</p>
+                                <h3 className="font-bold text-lg text-foreground">Categories</h3>
+                                <p className="text-xs text-muted-foreground">Top 5 by Amount</p>
                             </div>
                         </div>
                     </div>
                     <div className="space-y-4">
-                        {/* Dynamic categories visualization is a bit complex for now, keeping simple map if needed or static placeholder for now as request was "connect firebase" */}
-                        <div className="text-xs text-center opacity-80 py-4">
-                            (Visualization coming soon)
+                        <div className="text-sm text-center text-muted-foreground py-8 bg-muted/30 rounded-xl border border-border border-dashed">
+                            Visualization coming soon
                         </div>
                     </div>
                 </div>
 
                 {/* Expense Details (Chart Placeholder) */}
-                <div className="bg-[#1e88e5] rounded-none p-4 text-white shadow-md lg:col-span-2">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="bg-card rounded-2xl p-6 shadow-sm border border-border lg:col-span-2">
+                    <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                         <div className="flex items-center gap-3">
-                            <TrendingUp className="w-8 h-8" />
+                            <div className="bg-blue-50 p-2.5 rounded-xl text-blue-600">
+                                <TrendingUp className="w-6 h-6" />
+                            </div>
                             <div>
-                                <h3 className="font-bold text-lg">Daily Expenses</h3>
-                                <p className="text-xs opacity-80">Last 7 Days</p>
+                                <h3 className="font-bold text-lg text-foreground">Daily Expenses</h3>
+                                <p className="text-xs text-muted-foreground">Last 7 Days</p>
                             </div>
                         </div>
-                        <Button className="bg-white/20 hover:bg-white/30 text-white text-xs h-8 rounded-none">View Report</Button>
+                        <Button variant="outline" className="h-8 rounded-lg px-3 text-xs">View Report</Button>
                     </div>
                     <div className="h-[150px] flex items-end justify-between gap-2 px-2 pb-2">
                         {/* Fake Bar Chart */}
                         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
                             <div key={day} className="flex flex-col items-center gap-2 group cursor-pointer w-full">
                                 <div
-                                    className="w-full bg-white/30 rounded-none hover:bg-white/50 transition-all relative group-hover:shadow-lg"
+                                    className="w-full bg-blue-100 rounded-t-md hover:bg-blue-200 transition-all relative group-hover:shadow-md"
                                     style={{ height: `${[20, 60, 40, 80, 30, 90, 50][i]}%` }}
                                 >
                                 </div>
-                                <span className="text-xs opacity-80">{day}</span>
+                                <span className="text-xs text-muted-foreground font-medium">{day}</span>
                             </div>
                         ))}
                     </div>
@@ -168,51 +172,51 @@ export default function ExpensesPage() {
 
             {/* --- PAYMENT MODES --- */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#00acc1] rounded-none p-4 text-white flex items-center shadow-sm">
-                    <div className="mr-3 p-2 bg-white/20 rounded-none"><Banknote className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 flex items-center shadow-sm border border-border hover:shadow-md transition-shadow">
+                    <div className="mr-3 p-2 bg-teal-50 text-teal-600 rounded-xl"><Banknote className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="font-bold text-lg">
+                        <h3 className="font-bold text-lg text-foreground">
                             {expenses.filter(e => e.method === 'Cash').length}
                         </h3>
-                        <p className="text-xs opacity-90">Cash Txns</p>
+                        <p className="text-xs text-muted-foreground font-medium">Cash Txns</p>
                     </div>
                 </div>
-                <div className="bg-[#e53935] rounded-none p-4 text-white flex items-center shadow-sm">
-                    <div className="mr-3 p-2 bg-white/20 rounded-none"><CreditCard className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 flex items-center shadow-sm border border-border hover:shadow-md transition-shadow">
+                    <div className="mr-3 p-2 bg-rose-50 text-rose-600 rounded-xl"><CreditCard className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="font-bold text-lg">
+                        <h3 className="font-bold text-lg text-foreground">
                             {expenses.filter(e => e.method === 'Bank Transfer').length}
                         </h3>
-                        <p className="text-xs opacity-90">Bank Transfers</p>
+                        <p className="text-xs text-muted-foreground font-medium">Bank Transfers</p>
                     </div>
                 </div>
-                <div className="bg-[#4285f4] rounded-none p-4 text-white flex items-center shadow-sm">
-                    <div className="mr-3 font-bold text-xs bg-white/20 px-2 py-1.5 rounded-none">GPay</div>
+                <div className="bg-card rounded-2xl p-4 flex items-center shadow-sm border border-border hover:shadow-md transition-shadow">
+                    <div className="mr-3 p-2 bg-blue-50 text-blue-600 rounded-xl"><Smartphone className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="font-bold text-lg">
+                        <h3 className="font-bold text-lg text-foreground">
                             {expenses.filter(e => e.method === 'Online' || e.method === 'GPay').length}
                         </h3>
-                        <p className="text-xs opacity-90">Online/GPay</p>
+                        <p className="text-xs text-muted-foreground font-medium">Online/GPay</p>
                     </div>
                 </div>
-                <div className="bg-[#8e24aa] rounded-none p-4 text-white flex items-center shadow-sm">
-                    <div className="mr-3 font-bold text-xs bg-white/20 px-2 py-1.5 rounded-none">Total</div>
-                    <div><h3 className="font-bold text-lg">{expenses.length}</h3><p className="text-xs opacity-90">Transactions</p></div>
+                <div className="bg-card rounded-2xl p-4 flex items-center shadow-sm border border-border hover:shadow-md transition-shadow">
+                    <div className="mr-3 p-2 bg-purple-50 text-purple-600 rounded-xl"><Wallet className="w-5 h-5" /></div>
+                    <div><h3 className="font-bold text-lg text-foreground">{expenses.length}</h3><p className="text-xs text-muted-foreground font-medium">Transactions</p></div>
                 </div>
             </div>
 
 
             {/* --- EXPENSE LIST TABLE --- */}
-            <div className="bg-white rounded-none shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50">
-                    <h2 className="font-bold text-gray-700">Expense History</h2>
+            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+                <div className="p-5 border-b border-border flex flex-col sm:flex-row justify-between items-center gap-4 bg-card">
+                    <h2 className="font-bold text-foreground text-lg">Expense History</h2>
                     <div className="flex gap-2 w-full sm:w-auto">
                         <div className="relative flex-1 sm:w-64">
-                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input placeholder="Search expenses..." className="pl-8 bg-white rounded-none" />
+                            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="Search expenses..." className="pl-9 bg-muted/50 border-input rounded-xl focus:bg-background transition-colors h-10" />
                         </div>
                         <Button
-                            className="bg-[#ec407a] hover:bg-[#d81b60] text-white rounded-none"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-sm h-10 px-4"
                             onClick={() => setIsAddModalOpen(true)}
                         >
                             <Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Add</span>
@@ -221,41 +225,41 @@ export default function ExpensesPage() {
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-[#263238] text-white uppercase text-xs font-semibold">
+                        <thead className="bg-accent text-accent-foreground uppercase text-xs font-semibold">
                             <tr>
-                                <th className="px-6 py-3">Expense Title</th>
-                                <th className="px-6 py-3">Category</th>
-                                <th className="px-6 py-3">Date</th>
-                                <th className="px-6 py-3">Method</th>
-                                <th className="px-6 py-3">Status</th>
-                                <th className="px-6 py-3 text-right">Amount</th>
-                                <th className="px-6 py-3 text-right">Action</th>
+                                <th className="px-6 py-4">Expense Title</th>
+                                <th className="px-6 py-4">Category</th>
+                                <th className="px-6 py-4">Date</th>
+                                <th className="px-6 py-4">Method</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 text-right">Amount</th>
+                                <th className="px-6 py-4 text-right">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading && <tr><td colSpan={7} className="text-center py-4">Loading...</td></tr>}
-                            {!loading && expenses.length === 0 && <tr><td colSpan={7} className="text-center py-4">No expenses found.</td></tr>}
+                        <tbody className="divide-y divide-border">
+                            {loading && <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
+                            {!loading && expenses.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No expenses found.</td></tr>}
                             {!loading && expenses.map((expense) => (
-                                <tr key={expense.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-gray-800">{expense.title}</td>
+                                <tr key={expense.id} className="hover:bg-muted/50 transition-colors">
+                                    <td className="px-6 py-4 font-medium text-foreground">{expense.title}</td>
                                     <td className="px-6 py-4">
-                                        <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-none text-xs font-medium border border-blue-100">
+                                        <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-medium border border-blue-100">
                                             {expense.category}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-500">{expense.date}</td>
-                                    <td className="px-6 py-4 text-gray-500">{expense.method}</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{expense.date}</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{expense.method}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`text-xs font-semibold px-2 py-1 rounded-none ${expense.status === 'Paid'
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-red-100 text-red-700'
+                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${expense.status === 'Paid'
+                                            ? 'bg-green-100 text-green-700 border border-green-200'
+                                            : 'bg-red-100 text-red-700 border border-red-200'
                                             }`}>
                                             {expense.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-right font-bold text-gray-700">₹{expense.amount}</td>
+                                    <td className="px-6 py-4 text-right font-bold text-foreground">₹{expense.amount}</td>
                                     <td className="px-6 py-4 text-right">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 rounded-none">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg">
                                             <MoreVertical className="h-4 w-4" />
                                         </Button>
                                     </td>
@@ -307,7 +311,7 @@ export default function ExpensesPage() {
                         <div>
                             <label className="text-sm font-semibold text-gray-700 mb-1 block">Category</label>
                             <select
-                                className="w-full h-10 px-3 rounded-none border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white"
+                                className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white"
                                 value={newExpense.category}
                                 onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
                             >
@@ -323,7 +327,7 @@ export default function ExpensesPage() {
                         <div>
                             <label className="text-sm font-semibold text-gray-700 mb-1 block">Payment Method</label>
                             <select
-                                className="w-full h-10 px-3 rounded-none border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white"
+                                className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white"
                                 value={newExpense.method}
                                 onChange={(e) => setNewExpense({ ...newExpense, method: e.target.value })}
                             >
@@ -338,30 +342,30 @@ export default function ExpensesPage() {
                     <div>
                         <label className="text-sm font-semibold text-gray-700 mb-1 block">Status</label>
                         <div className="flex gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer bg-green-50 px-3 py-2 rounded-md border border-green-100">
                                 <input
                                     type="radio"
                                     checked={newExpense.status === 'Paid'}
                                     onChange={() => setNewExpense({ ...newExpense, status: 'Paid' })}
-                                    className="text-green-500 focus:ring-green-500 rounded-none"
+                                    className="text-green-500 focus:ring-green-500"
                                 />
-                                <span className="text-sm text-gray-700">Paid</span>
+                                <span className="text-sm font-medium text-green-700">Paid</span>
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-center gap-2 cursor-pointer bg-red-50 px-3 py-2 rounded-md border border-red-100">
                                 <input
                                     type="radio"
                                     checked={newExpense.status === 'Pending'}
                                     onChange={() => setNewExpense({ ...newExpense, status: 'Pending' })}
-                                    className="text-red-500 focus:ring-red-500 rounded-none"
+                                    className="text-red-500 focus:ring-red-500"
                                 />
-                                <span className="text-sm text-gray-700">Pending</span>
+                                <span className="text-sm font-medium text-red-700">Pending</span>
                             </label>
                         </div>
                     </div>
 
                     <div className="flex justify-end pt-4 border-t mt-4">
-                        <Button variant="outline" className="mr-2 rounded-none" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-                        <Button className="bg-[#ec407a] hover:bg-[#d81b60] text-white rounded-none" onClick={handleSave}>
+                        <Button variant="outline" className="mr-2 rounded-md" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
+                        <Button className="bg-primary hover:bg-primary/90 text-white rounded-md" onClick={handleSave}>
                             <Save className="w-4 h-4 mr-2" /> Save Expense
                         </Button>
                     </div>

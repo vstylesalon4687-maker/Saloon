@@ -9,6 +9,7 @@ import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 export default function EmployeeSalesPage() {
     const [salesData, setSalesData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
     const [staffMap, setStaffMap] = useState<{ [key: string]: any }>({});
 
     // Fetch Staff first for mapping names
@@ -68,56 +69,56 @@ export default function EmployeeSalesPage() {
     }, [staffMap]); // Re-run when staff map loads
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6 font-sans animate-fade-in relative">
+        <div className="min-h-screen bg-background p-6 font-sans animate-fade-in relative text-foreground">
             {/* Header / Title Area */}
-            <div className="mb-4">
-                <h1 className="text-xl font-semibold text-gray-700">
+            <div className="mb-6">
+                <h1 className="text-2xl font-bold text-foreground">
                     Employee Wise Sales
                 </h1>
-                <Link href="/" className="text-red-500 text-sm font-medium hover:underline flex items-center gap-1 mt-1">
+                <Link href="/" className="text-primary text-sm font-medium hover:underline flex items-center gap-1 mt-1">
                     Back To Home <ArrowLeft className="w-3 h-3" />
                 </Link>
             </div>
 
             {/* Toolbar */}
-            <div className="flex justify-between items-center mb-4">
-                <Button className="bg-[#4a5568] hover:bg-gray-700 text-white flex items-center gap-2 px-4 shadow-sm">
-                    <Calendar className="w-4 h-4 text-orange-400" /> CALENDAR
+            <div className="flex justify-between items-center mb-6">
+                <Button variant="outline" className="flex items-center gap-2 px-4 shadow-sm rounded-xl border-input bg-card hover:bg-accent text-foreground">
+                    <Calendar className="w-4 h-4 text-muted-foreground" /> CALENDAR
                 </Button>
                 <div className="flex gap-2">
-                    <Button className="bg-[#fbbf24] hover:bg-yellow-500 text-white w-10 h-10 p-2 rounded shadow-sm">
-                        <Download className="w-5 h-5" />
+                    <Button variant="outline" size="icon" className="rounded-xl shadow-sm border-input bg-card hover:bg-accent">
+                        <Download className="w-5 h-5 text-muted-foreground" />
                     </Button>
                 </div>
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded shadow-sm overflow-hidden border border-gray-200">
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden border border-border">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left whitespace-nowrap">
-                        <thead className="bg-[#fff9c4] text-gray-800 text-xs font-bold uppercase tracking-wider border-b border-gray-200">
+                        <thead className="bg-accent text-accent-foreground text-xs font-semibold uppercase tracking-wider border-b border-border">
                             <tr>
-                                <th className="px-4 py-3"></th>
-                                <th className="px-4 py-3">Employee<br />Code</th>
-                                <th className="px-4 py-3">Employee<br />Name</th>
-                                <th className="px-4 py-3">Item<br />Count</th>
-                                <th className="px-4 py-3">Total<br />Sales</th>
+                                <th className="px-6 py-4"></th>
+                                <th className="px-6 py-4">Employee<br />Code</th>
+                                <th className="px-6 py-4">Employee<br />Name</th>
+                                <th className="px-6 py-4">Item<br />Count</th>
+                                <th className="px-6 py-4">Total<br />Sales</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                            {loading && <tr><td colSpan={5} className="text-center py-4">Loading...</td></tr>}
-                            {!loading && salesData.length === 0 && <tr><td colSpan={5} className="text-center py-4">No sales data found</td></tr>}
+                        <tbody className="divide-y divide-border bg-card">
+                            {loading && <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
+                            {!loading && salesData.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">No sales data found</td></tr>}
                             {!loading && salesData.map((row, idx) => (
-                                <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-4 py-3">
-                                        <div className={`w-8 h-8 rounded-full ${row.color || 'bg-blue-500'} text-white flex items-center justify-center font-bold text-xs`}>
+                                <tr key={idx} className="hover:bg-muted/50 transition-colors">
+                                    <td className="px-6 py-4">
+                                        <div className={`w-9 h-9 rounded-full ${row.color || 'bg-primary'} text-primary-foreground flex items-center justify-center font-bold text-xs shadow-sm`}>
                                             {row.name ? row.name.charAt(0) : ""}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-gray-600 font-medium">{row.code}</td>
-                                    <td className="px-4 py-3 text-gray-800 font-semibold">{row.name}</td>
-                                    <td className="px-4 py-3 text-gray-600">{row.billCount}</td>
-                                    <td className="px-4 py-3 text-gray-800 font-bold">₹{row.total.toFixed(2)}</td>
+                                    <td className="px-6 py-4 text-muted-foreground font-medium">{row.code}</td>
+                                    <td className="px-6 py-4 text-foreground font-semibold">{row.name}</td>
+                                    <td className="px-6 py-4 text-muted-foreground">{row.billCount}</td>
+                                    <td className="px-6 py-4 text-foreground font-bold">₹{row.total.toFixed(2)}</td>
                                 </tr>
                             ))}
                         </tbody>
