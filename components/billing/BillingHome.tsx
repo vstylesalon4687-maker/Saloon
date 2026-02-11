@@ -10,11 +10,14 @@ import {
     BarChart3,
     CreditCard,
     Tag,
-    Printer
+    Printer,
+    User,
+    Percent
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { cn } from "@/lib/utils";
+import { BillDetailView } from "./BillDetailView";
 
 interface BillingHomeProps {
     onCreate: () => void;
@@ -29,6 +32,18 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
     const [showDateFilter, setShowDateFilter] = useState(false); // For calendar filter
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+
+    // Dashboard Logic State
+    const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
+    const [customers, setCustomers] = useState<any[]>([]);
+
+    useEffect(() => {
+        const qCustomers = query(collection(db, "customers"));
+        const unsubCustomers = onSnapshot(qCustomers, (snapshot) => {
+            setCustomers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+        return () => unsubCustomers();
+    }, []);
 
     useEffect(() => {
         // Fetch Bills
@@ -93,6 +108,85 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
     // Placeholder for advance if not yet implemented in DB
     const totalAdvance = 0;
 
+    // Dashboard Metrics Calculation
+    const calculateDashboardMetrics = () => {
+        let serviceBills = 0;
+        let productBills = 0;
+        let serviceRevenue = 0;
+        let productRevenue = 0;
+        let menCount = 0;
+        let womenCount = 0;
+        let cashSales = 0;
+        let cardSales = 0;
+        let upiSales = 0;
+        let otherSales = 0;
+        let totalDiscount = 0;
+
+        filteredInvoices.forEach(inv => {
+            const grandTotal = Number(inv.grandTotal) || 0;
+            const discount = Number(inv.totalDiscount) || 0;
+            totalDiscount += discount;
+
+            let hasService = false;
+            let hasProduct = false;
+            let invServiceTotal = 0;
+            let invProductTotal = 0;
+
+            if (inv.items && Array.isArray(inv.items)) {
+                inv.items.forEach((item: any) => {
+                    const itemTotal = (Number(item.price) * Number(item.qty)) - (Number(item.disc) || 0);
+                    if ((item.code || '').startsWith('P-') || (item.code || '').startsWith('PROD')) {
+                        hasProduct = true;
+                        invProductTotal += itemTotal;
+                    } else {
+                        hasService = true;
+                        invServiceTotal += itemTotal;
+                    }
+                });
+            } else {
+                hasService = true;
+                invServiceTotal = grandTotal;
+            }
+
+            if (hasService) serviceBills++;
+            if (hasProduct) productBills++;
+
+            serviceRevenue += invServiceTotal;
+            productRevenue += invProductTotal;
+
+            const method = (inv.paymentMethod || 'Cash').toLowerCase();
+            if (method.includes('cash')) cashSales += grandTotal;
+            else if (method.includes('card') || method.includes('visa') || method.includes('master')) cardSales += grandTotal;
+            else if (method.includes('upi') || method.includes('pay') || method.includes('wallet')) upiSales += grandTotal;
+            else otherSales += grandTotal;
+
+            if (inv.customerId) {
+                const cust = customers.find(c => c.id === inv.customerId);
+                if (cust) {
+                    if (cust.gender === 'Male') menCount++;
+                    else if (cust.gender === 'Female') womenCount++;
+                }
+            }
+        });
+
+        return {
+            serviceBills,
+            productBills,
+            serviceRevenue,
+            productRevenue,
+            menCount,
+            womenCount,
+            cashSales,
+            cardSales,
+            upiSales,
+            otherSales,
+            totalDiscount,
+            totalBills: filteredInvoices.length
+        };
+    };
+
+    const metrics = calculateDashboardMetrics();
+
     // Print Handler
     const handlePrint = (bill: any) => {
         const printWindow = window.open('', '_blank');
@@ -102,7 +196,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Bill #${bill.id.substring(0, 8).toUpperCase()}</title>
+                <title>Bill #${bill.invoiceNo || bill.id.substring(0, 8).toUpperCase()}</title>
                 <style>
                     body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
                     .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
@@ -138,7 +232,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                 </div>
                 <div class="bill-info">
                     <div>
-                        <div><strong>Invoice #:</strong> ${bill.id.substring(0, 8).toUpperCase()}</div>
+                        <div><strong>Invoice #:</strong> ${bill.invoiceNo || bill.id.substring(0, 8).toUpperCase()}</div>
                         <div><strong>Date:</strong> ${bill.date || new Date().toISOString().split('T')[0]}</div>
                         <div><strong>Payment:</strong> ${bill.paymentMethod || 'Cash'}</div>
                     </div>
@@ -155,7 +249,6 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                             <th class="text-right">Qty</th>
                             <th class="text-right">Price</th>
                             <th class="text-right">Disc</th>
-                            <th class="text-right">GST</th>
                             <th class="text-right">Total</th>
                         </tr>
                     </thead>
@@ -167,7 +260,6 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                                 <td class="text-right">${item.qty || 1}</td>
                                 <td class="text-right">₹${Number(item.price || 0).toFixed(2)}</td>
                                 <td class="text-right">₹${Number(item.disc || 0).toFixed(2)}</td>
-                                <td class="text-right">₹${Number(item.gst || 0).toFixed(2)}</td>
                                 <td class="text-right">₹${((item.price || 0) * (item.qty || 1) - (item.disc || 0)).toFixed(2)}</td>
                             </tr>
                         `).join('')}
@@ -176,7 +268,6 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                 <div class="totals">
                     <div><strong>Sub Total:</strong> ₹${Number(bill.subTotal || 0).toFixed(2)}</div>
                     <div><strong>Discount:</strong> ₹${Number(bill.totalDiscount || 0).toFixed(2)}</div>
-                    <div><strong>GST:</strong> ₹${Number(bill.totalGst || 0).toFixed(2)}</div>
                     <div class="grand-total"><strong>Grand Total:</strong> ₹${Number(bill.grandTotal || 0).toFixed(2)}</div>
                 </div>
                 <div class="footer">
@@ -200,144 +291,21 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
         setSelectedBill(bill);
     };
 
+    if (selectedBill) {
+        return <BillDetailView bill={selectedBill} onClose={() => setSelectedBill(null)} />;
+    }
+
+
+
+
+
+
+
+
+
+
     return (
         <div className="space-y-6 animate-in p-4 min-h-screen">
-            {/* View Modal */}
-            {selectedBill && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedBill(null)}>
-                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-800">Bill Details - #{selectedBill.id.substring(0, 8).toUpperCase()}</h2>
-                            <button onClick={() => setSelectedBill(null)} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
-                        </div>
-                        <div className="p-6">
-                            {/* Bill Info */}
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div>
-                                    <p className="text-sm text-gray-500">Customer Name</p>
-                                    <p className="text-lg font-bold">{selectedBill.customerName || 'Walk-in Customer'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Phone</p>
-                                    <p className="text-lg font-bold">{selectedBill.customerPhone || 'N/A'}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Date</p>
-                                    <p className="text-lg font-bold">{selectedBill.date}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500">Payment Method</p>
-                                    <p className="text-lg font-bold">{selectedBill.paymentMethod || 'Cash'}</p>
-                                </div>
-                            </div>
-
-                            {/* Items Table */}
-                            <table className="w-full border-collapse border border-gray-200 mb-6 rounded-lg overflow-hidden">
-                                <thead className="bg-pink-50">
-                                    <tr>
-                                        <th className="border border-gray-200 px-4 py-2 text-left">Service</th>
-                                        <th className="border border-gray-200 px-4 py-2 text-left">Staff</th>
-                                        <th className="border border-gray-200 px-4 py-2 text-right">Qty</th>
-                                        <th className="border border-gray-200 px-4 py-2 text-right">Price</th>
-                                        <th className="border border-gray-200 px-4 py-2 text-right">Disc</th>
-                                        <th className="border border-gray-200 px-4 py-2 text-right">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(selectedBill.items || []).map((item: any, idx: number) => (
-                                        <tr key={idx}>
-                                            <td className="border border-gray-200 px-4 py-2">{item.service || item.desc}</td>
-                                            <td className="border border-gray-200 px-4 py-2">{item.staff || '-'}</td>
-                                            <td className="border border-gray-200 px-4 py-2 text-right">{item.qty}</td>
-                                            <td className="border border-gray-200 px-4 py-2 text-right">₹{Number(item.price).toFixed(2)}</td>
-                                            <td className="border border-gray-200 px-4 py-2 text-right">₹{Number(item.disc || 0).toFixed(2)}</td>
-                                            <td className="border border-gray-200 px-4 py-2 text-right font-bold">₹{((item.price * item.qty) - (item.disc || 0)).toFixed(2)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-
-                            {/* Totals */}
-                            <div className="text-right space-y-2">
-                                <div className="flex justify-end gap-4">
-                                    <span className="text-gray-600">Sub Total:</span>
-                                    <span className="font-bold w-32">₹{Number(selectedBill.subTotal || 0).toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-end gap-4">
-                                    <span className="text-gray-600">Discount:</span>
-                                    <span className="font-bold w-32">₹{Number(selectedBill.totalDiscount || 0).toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-end gap-4">
-                                    <span className="text-gray-600">GST:</span>
-                                    <span className="font-bold w-32">₹{Number(selectedBill.totalGst || 0).toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-end gap-4 text-xl border-t-2 border-gray-300 pt-2 mt-2">
-                                    <span className="text-gray-800 font-bold">Grand Total:</span>
-                                    <span className="font-bold text-green-600 w-32">₹{Number(selectedBill.grandTotal || 0).toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="mt-6 flex justify-end gap-3">
-                                <Button onClick={() => setSelectedBill(null)} className="bg-gray-500 hover:bg-gray-600 text-white rounded-md">
-                                    Close
-                                </Button>
-                                <Button onClick={() => handlePrint(selectedBill)} className="bg-primary hover:bg-primary/90 text-white rounded-md flex items-center gap-2">
-                                    <Printer className="w-4 h-4" /> Print Bill
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Top Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Sales */}
-                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
-                    <div>
-                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Sales</p>
-                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalSales.toFixed(2)}</h3>
-                    </div>
-                    <div className="bg-emerald-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
-                        <BarChart3 className="w-6 h-6 text-emerald-500" />
-                    </div>
-                </div>
-
-                {/* Total Cash */}
-                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
-                    <div>
-                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Cash</p>
-                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalCash.toFixed(2)}</h3>
-                    </div>
-                    <div className="bg-blue-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
-                        <CreditCard className="w-6 h-6 text-blue-500" />
-                    </div>
-                </div>
-
-                {/* Total Advance */}
-                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
-                    <div>
-                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Advance</p>
-                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalAdvance.toFixed(2)}</h3>
-                    </div>
-                    <div className="bg-amber-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
-                        <Tag className="w-6 h-6 text-amber-500" />
-                    </div>
-                </div>
-
-                {/* Total Expenses */}
-                <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-5 border border-border shadow-sm hover-lift flex justify-between items-center group">
-                    <div>
-                        <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider group-hover:text-primary transition-colors">Total Expenses</p>
-                        <h3 className="text-2xl font-bold text-foreground font-mono mt-1">₹{totalExpenses.toFixed(2)}</h3>
-                    </div>
-                    <div className="bg-rose-50 p-3 rounded-xl group-hover:scale-110 transition-transform">
-                        <PieChart className="w-6 h-6 text-rose-500" />
-                    </div>
-                </div>
-            </div>
-
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row justify-between items-center gap-4 py-2 bg-card p-4 rounded-2xl border border-border shadow-sm mb-6">
                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
@@ -411,8 +379,12 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                    <Button variant="outline" className="hidden md:flex items-center gap-2 px-4 shadow-sm rounded-xl border-input h-10">
-                        <LayoutDashboard className="w-4 h-4 text-muted-foreground" /> DASHBOARD
+                    <Button
+                        variant="outline"
+                        onClick={() => setViewMode(viewMode === 'list' ? 'dashboard' : 'list')}
+                        className={cn("hidden md:flex items-center gap-2 px-4 shadow-sm rounded-xl border-input h-10", viewMode === 'dashboard' ? 'bg-accent text-accent-foreground border-primary' : '')}
+                    >
+                        <LayoutDashboard className="w-4 h-4 text-muted-foreground" /> {viewMode === 'dashboard' ? 'LIST VIEW' : 'DASHBOARD'}
                     </Button>
                     <Button
                         onClick={onCreate}
@@ -423,54 +395,184 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-accent text-accent-foreground uppercase text-xs font-semibold">
-                            <tr>
-                                <th className="px-6 py-4 whitespace-nowrap">Invoice</th>
-                                <th className="px-6 py-4 whitespace-nowrap">Date</th>
-                                <th className="px-6 py-4 whitespace-nowrap">Customer</th>
-                                <th className="px-6 py-4 whitespace-nowrap">Mob</th>
-                                <th className="px-6 py-4 whitespace-nowrap">Staff</th>
-                                <th className="px-6 py-4 text-right whitespace-nowrap">Total</th>
-                                <th className="px-6 py-4 text-center whitespace-nowrap">PayMode</th>
-                                <th className="px-6 py-4 text-center whitespace-nowrap">Status</th>
-                                <th className="px-6 py-4 text-center whitespace-nowrap">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {loading && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
-                            {!loading && filteredInvoices.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">No invoices found</td></tr>}
-                            {!loading && filteredInvoices.map((inv, idx) => (
-                                <tr key={inv.id} className="hover:bg-muted/50 transition-colors">
-                                    <td className="px-6 py-4 text-muted-foreground font-medium">#{inv.id.substring(0, 6).toUpperCase()}</td>
-                                    <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{inv.date}</td>
-                                    <td className="px-6 py-4 text-foreground font-semibold">{inv.customerName || 'Walk-in'}</td>
-                                    <td className="px-6 py-4 text-muted-foreground">{inv.customerPhone || '-'}</td>
-                                    <td className="px-6 py-4 text-muted-foreground text-xs text-center">
-                                        {inv.items && inv.items.length > 0 && inv.items[0].staff ? 'Assigned' : '-'}
-                                    </td>
-                                    <td className="px-6 py-4 text-right text-foreground font-bold">₹{Number(inv.grandTotal).toFixed(2)}</td>
-                                    <td className="px-6 py-4 text-center text-xs text-muted-foreground uppercase">{inv.paymentMethod || 'Cash'}</td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold border border-green-200">Paid</span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center flex justify-center gap-2">
-                                        <Button size="sm" onClick={() => handleView(inv)} variant="secondary" className="h-8 px-3 text-xs rounded-lg shadow-sm">
-                                            View
-                                        </Button>
-                                        <Button size="sm" onClick={() => handlePrint(inv)} className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 text-xs rounded-lg shadow-sm flex items-center gap-1">
-                                            <Printer className="w-3 h-3" /> Print
-                                        </Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {viewMode === 'dashboard' ? (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 animate-slide-up">
+                    {/* Row 1: Services & Products */}
+                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white text-center shadow-lg">
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="flex flex-col items-center flex-1">
+                                <div className="bg-white/20 p-2 rounded-lg mb-2"><LayoutDashboard className="w-5 h-5 text-white" /></div>
+                                <h3 className="text-3xl font-bold">{metrics.serviceBills}</h3>
+                                <p className="text-[10px] uppercase font-bold tracking-wider opacity-80">Service Bills</p>
+                            </div>
+                            <div className="w-px h-12 bg-white/20 mx-2"></div>
+                            <div className="flex flex-col items-center flex-1">
+                                <div className="bg-white/20 p-2 rounded-lg mb-2"><Tag className="w-5 h-5 text-white" /></div>
+                                <h3 className="text-3xl font-bold">{metrics.productBills}</h3>
+                                <p className="text-[10px] uppercase font-bold tracking-wider opacity-80">Product Bills</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-emerald-400 to-teal-500 md:col-span-2 rounded-2xl p-6 text-white text-center shadow-lg flex items-center justify-around">
+                        <div className="flex flex-col items-center">
+                            <div className="bg-white/20 p-2 rounded-lg mb-2"><BarChart3 className="w-5 h-5 text-white" /></div>
+                            <h3 className="text-2xl font-bold">₹{metrics.serviceRevenue.toFixed(0)}</h3>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-80">Service Net</p>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">₹{metrics.serviceRevenue.toFixed(0)} Gross</p>
+                        </div>
+                        <div className="w-px h-16 bg-white/20"></div>
+                        <div className="flex flex-col items-center">
+                            <div className="bg-white/20 p-2 rounded-lg mb-2"><BarChart3 className="w-5 h-5 text-white" /></div>
+                            <h3 className="text-2xl font-bold">₹{metrics.productRevenue.toFixed(0)}</h3>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-80">Product Net</p>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">₹{metrics.productRevenue.toFixed(0)} Gross</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-6 text-white text-center shadow-lg">
+                        <div className="flex flex-col items-center justify-center h-full">
+                            <div className="bg-white/20 p-2 rounded-lg mb-2"><LayoutDashboard className="w-5 h-5 text-white" /></div>
+                            <h3 className="text-2xl font-bold">0</h3>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-80">Product Net</p>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">0 Gross</p>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Gender & Cash */}
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="flex gap-4 w-full justify-around">
+                            <div className="text-center">
+                                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-2 text-blue-600 font-bold"><User className="w-5 h-5" /></div>
+                                <div className="text-xl font-bold text-blue-900">{metrics.menCount}</div>
+                                <div className="text-[10px] font-bold text-blue-400">MEN</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="bg-pink-100 w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-2 text-pink-600 font-bold"><User className="w-5 h-5" /></div>
+                                <div className="text-xl font-bold text-pink-900">{metrics.womenCount}</div>
+                                <div className="text-[10px] font-bold text-pink-400">WOMEN</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="bg-cyan-50 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-cyan-600"><CreditCard className="w-6 h-6" /></div>
+                        <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">Cash Sales</div>
+                        <div className="text-2xl font-bold text-cyan-600">₹{metrics.cashSales.toFixed(0)}</div>
+                    </div>
+
+
+
+                    {/* Payment Types List */}
+                    <div className="row-span-2 bg-white border border-border rounded-2xl p-6 shadow-sm">
+                        <h4 className="flex items-center gap-2 font-bold text-gray-600 mb-4 text-xs uppercase tracking-wider">
+                            <CreditCard className="w-4 h-4 text-primary" /> Payment Methods
+                        </h4>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm font-medium text-gray-700">Cash</span>
+                                <span className="font-bold text-indigo-600">₹{metrics.cashSales.toFixed(2)}</span>
+                            </div>
+                            {metrics.cardSales > 0 && (
+                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                    <span className="text-sm font-medium text-gray-700">Card</span>
+                                    <span className="font-bold text-indigo-600">₹{metrics.cardSales.toFixed(2)}</span>
+                                </div>
+                            )}
+                            {metrics.upiSales > 0 && (
+                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                    <span className="text-sm font-medium text-gray-700">E-Wallet/UPI</span>
+                                    <span className="font-bold text-indigo-600">₹{metrics.upiSales.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="border-t border-dashed border-gray-200 mt-4 pt-4">
+                                <h5 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-1 text-center">Overall Advance</h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 3 */}
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="bg-green-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-green-600"><LayoutDashboard className="w-6 h-6" /></div>
+                        <div className="text-xl font-bold text-green-700">{metrics.totalBills}</div>
+                        <div className="text-[10px] text-green-600 font-bold uppercase tracking-wider">No of Bills</div>
+                    </div>
+
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="bg-red-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-red-600"><LayoutDashboard className="w-6 h-6" /></div>
+                        <div className="text-xl font-bold text-red-700">0</div>
+                        <div className="text-[10px] text-red-600 font-bold uppercase tracking-wider">Cancelled Bills</div>
+                    </div>
+
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="bg-pink-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-pink-600"><CreditCard className="w-6 h-6" /></div>
+                        <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">Card Sales</div>
+                        <div className="text-xl font-bold text-pink-600">₹{metrics.cardSales.toFixed(0)}</div>
+                    </div>
+
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="bg-sky-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-sky-600"><CreditCard className="w-6 h-6" /></div>
+                        <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">E-Wallet</div>
+                        <div className="text-xl font-bold text-sky-600">₹{metrics.upiSales.toFixed(0)}</div>
+                    </div>
+
+                    {/* Row 4 */}
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="bg-amber-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-amber-600"><Percent className="w-6 h-6" /></div>
+                        <div className="text-xl font-bold text-amber-600">{metrics.totalDiscount.toFixed(0)}</div>
+                        <div className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Total Discount</div>
+                    </div>
                 </div>
-            </div>
+            ) : (
+                /* Table */
+                <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-accent text-accent-foreground uppercase text-xs font-semibold">
+                                <tr>
+                                    <th className="px-6 py-4 whitespace-nowrap">Invoice</th>
+                                    <th className="px-6 py-4 whitespace-nowrap">Date</th>
+                                    <th className="px-6 py-4 whitespace-nowrap">Customer</th>
+                                    <th className="px-6 py-4 whitespace-nowrap">Mob</th>
+                                    <th className="px-6 py-4 whitespace-nowrap">Staff</th>
+                                    <th className="px-6 py-4 text-right whitespace-nowrap">Total</th>
+                                    <th className="px-6 py-4 text-center whitespace-nowrap">PayMode</th>
+                                    <th className="px-6 py-4 text-center whitespace-nowrap">Status</th>
+                                    <th className="px-6 py-4 text-center whitespace-nowrap">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {loading && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
+                                {!loading && filteredInvoices.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">No invoices found</td></tr>}
+                                {!loading && filteredInvoices.map((inv, idx) => (
+                                    <tr key={inv.id} className="hover:bg-muted/50 transition-colors">
+                                        <td className="px-6 py-4 text-muted-foreground font-medium">#{inv.invoiceNo || inv.id.substring(0, 6).toUpperCase()}</td>
+                                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{inv.date}</td>
+                                        <td className="px-6 py-4 text-foreground font-semibold">{inv.customerName || 'Walk-in'}</td>
+                                        <td className="px-6 py-4 text-muted-foreground">{inv.customerPhone || '-'}</td>
+                                        <td className="px-6 py-4 text-muted-foreground text-xs text-center">
+                                            {inv.items && inv.items.length > 0 && inv.items[0].staff ? 'Assigned' : '-'}
+                                        </td>
+                                        <td className="px-6 py-4 text-right text-foreground font-bold">₹{Number(inv.grandTotal).toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-center text-xs text-muted-foreground uppercase">{inv.paymentMethod || 'Cash'}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold border border-green-200">Paid</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center flex justify-center gap-2">
+                                            <Button size="sm" onClick={() => handleView(inv)} variant="secondary" className="h-8 px-3 text-xs rounded-lg shadow-sm">
+                                                View
+                                            </Button>
+                                            <Button size="sm" onClick={() => handlePrint(inv)} className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 text-xs rounded-lg shadow-sm flex items-center gap-1">
+                                                <Printer className="w-3 h-3" /> Print
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

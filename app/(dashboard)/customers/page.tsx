@@ -13,16 +13,23 @@ import { Button } from "@/components/ui/Button";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 
+import { CustomerProfileModal } from "@/components/customers/CustomerProfileModal";
+
 export default function CustomersPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-    const [dateRange, setDateRange] = useState({ from: "2026-03-01", to: "2026-03-02" });
+    const [dateRange, setDateRange] = useState({ from: "", to: "" });
     const [clients, setClients] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Modal State
+    const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
     // Fetch Customers
     useEffect(() => {
-        const q = query(collection(db, "customers"), orderBy("name"));
+        // Query by firstName if available, or just filtering client side is fine for small datasets
+        const q = query(collection(db, "customers"), orderBy("firstName")); // Changed to firstName based on CreateBill usage
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const data = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -34,10 +41,27 @@ export default function CustomersPage() {
         return () => unsubscribe();
     }, []);
 
-    const filteredClients = clients.filter(c =>
-        (c.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.mobile || "").includes(searchTerm)
-    );
+    const filteredClients = clients.filter(c => {
+        const name = `${c.firstName || ''} ${c.lastName || ''} ${c.name || ''}`.trim();
+        const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (c.mobile || "").includes(searchTerm);
+
+        let matchesDate = true;
+        if (dateRange.from && dateRange.to) {
+            if (c.joinDate) {
+                matchesDate = c.joinDate >= dateRange.from && c.joinDate <= dateRange.to;
+            } else {
+                matchesDate = false;
+            }
+        }
+
+        return matchesSearch && matchesDate;
+    });
+
+    const handleRowClick = (client: any) => {
+        setSelectedCustomer(client);
+        setIsModalOpen(true);
+    };
 
     return (
         <div className="space-y-6 animate-fade-in p-4 bg-background min-h-screen font-sans relative">
@@ -45,50 +69,50 @@ export default function CustomersPage() {
             {/* Stats Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                 {/* Total Clients */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all">
-                    <div className="bg-purple-50 p-2.5 rounded-xl text-purple-600"><Users className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
+                    <div className="bg-purple-50 p-2.5 rounded-xl text-purple-600 group-hover:scale-110 transition-transform"><Users className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground">{clients.length}</h3>
+                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.length}</h3>
                         <p className="text-xs text-muted-foreground font-medium">Total Clients</p>
                     </div>
                 </div>
                 {/* Male */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all">
-                    <div className="bg-teal-50 p-2.5 rounded-xl text-teal-600"><User className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
+                    <div className="bg-teal-50 p-2.5 rounded-xl text-teal-600 group-hover:scale-110 transition-transform"><User className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground">{clients.filter(c => c.gender === 'Male').length}</h3>
+                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => (c.gender || '').toLowerCase() === 'male').length}</h3>
                         <p className="text-xs text-muted-foreground font-medium">Male</p>
                     </div>
                 </div>
                 {/* Female */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all">
-                    <div className="bg-pink-50 p-2.5 rounded-xl text-pink-600"><User className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
+                    <div className="bg-pink-50 p-2.5 rounded-xl text-pink-600 group-hover:scale-110 transition-transform"><User className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground">{clients.filter(c => c.gender === 'Female').length}</h3>
+                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => (c.gender || '').toLowerCase() === 'female').length}</h3>
                         <p className="text-xs text-muted-foreground font-medium">Female</p>
                     </div>
                 </div>
                 {/* Members */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all">
-                    <div className="bg-rose-50 p-2.5 rounded-xl text-rose-600"><CreditCard className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
+                    <div className="bg-rose-50 p-2.5 rounded-xl text-rose-600 group-hover:scale-110 transition-transform"><CreditCard className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground">{clients.filter(c => c.type === 'Member').length}</h3>
+                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => c.type === 'Member').length}</h3>
                         <p className="text-xs text-muted-foreground font-medium">Members</p>
                     </div>
                 </div>
                 {/* Non-Members */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all">
-                    <div className="bg-slate-50 p-2.5 rounded-xl text-slate-600"><UserX className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
+                    <div className="bg-slate-50 p-2.5 rounded-xl text-slate-600 group-hover:scale-110 transition-transform"><UserX className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground">{clients.filter(c => c.type !== 'Member').length}</h3>
+                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => c.type !== 'Member').length}</h3>
                         <p className="text-xs text-muted-foreground font-medium">Non-Members</p>
                     </div>
                 </div>
                 {/* New Clients */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all">
-                    <div className="bg-amber-50 p-2.5 rounded-xl text-amber-600"><Clock className="w-5 h-5" /></div>
+                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
+                    <div className="bg-amber-50 p-2.5 rounded-xl text-amber-600 group-hover:scale-110 transition-transform"><Clock className="w-5 h-5" /></div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground">{clients.length}</h3>
+                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.length}</h3>
                         <p className="text-xs text-muted-foreground font-medium">New Clients</p>
                     </div>
                 </div>
@@ -107,7 +131,7 @@ export default function CustomersPage() {
                 </div>
                 <div className="flex items-center gap-4 relative">
                     <span className="text-sm font-medium text-primary bg-accent px-3 py-1 rounded-xl border border-input">
-                        {dateRange.from} - {dateRange.to}
+                        {dateRange.from && dateRange.to ? `${dateRange.from} - ${dateRange.to}` : 'All Time'}
                     </span>
                     <Button
                         onClick={() => setIsCalendarOpen(!isCalendarOpen)}
@@ -173,7 +197,6 @@ export default function CustomersPage() {
                                 <th className="px-6 py-4 text-center">Mobile</th>
                                 <th className="px-6 py-4 text-center">Gender</th>
                                 <th className="px-6 py-4 text-center">Birthday</th>
-                                <th className="px-6 py-4 text-center">Card No</th>
                                 <th className="px-6 py-4 text-center">Join Date</th>
                                 <th className="px-6 py-4 text-center">Valid Till</th>
                             </tr>
@@ -182,24 +205,29 @@ export default function CustomersPage() {
                             {loading && <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
                             {!loading && filteredClients.length === 0 && <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">No clients found</td></tr>}
                             {!loading && filteredClients.map((client, idx) => (
-                                <tr key={client.id} className="hover:bg-muted/50 transition-colors">
+                                <tr
+                                    key={client.id}
+                                    className="hover:bg-muted/50 transition-colors cursor-pointer"
+                                    onClick={() => handleRowClick(client)}
+                                >
                                     <td className="px-6 py-4 text-center font-bold text-foreground">{idx + 1}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
                                             <div className="bg-purple-50 p-1.5 rounded-full">
                                                 <User className="w-4 h-4 text-purple-500 fill-purple-500" />
                                             </div>
-                                            <span className="font-medium text-foreground uppercase text-xs">{client.name}</span>
+                                            <span className="font-medium text-foreground uppercase text-xs">
+                                                {client.firstName} {client.lastName} {client.name}
+                                            </span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center text-muted-foreground text-xs">{client.mobile}</td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className="bg-pink-50 text-pink-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-pink-100">
-                                            {client.gender}
+                                        <span className="bg-pink-50 text-pink-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-pink-100 uppercase">
+                                            {client.gender || 'Unisex'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center text-foreground">{client.dob || '-'}</td>
-                                    <td className="px-6 py-4 text-center text-foreground">{client.cardNo || '-'}</td>
                                     <td className="px-6 py-4 text-center flex justify-center">
                                         <div className="flex items-center gap-1.5 text-muted-foreground">
                                             <Calendar className="w-4 h-4 opacity-70" />
@@ -213,6 +241,15 @@ export default function CustomersPage() {
                     </table>
                 </div>
             </div>
+
+            <CustomerProfileModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                customer={selectedCustomer}
+                onUpdate={() => {
+                    // Optional: Refresh list if not using realtime listener (we are, so might not need much here)
+                }}
+            />
 
         </div>
     );

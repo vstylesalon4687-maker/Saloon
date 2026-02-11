@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Receipt, Users, CreditCard, UserCog, LogOut, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Receipt, Users, CreditCard, UserCog, LogOut, X, ChevronLeft, ChevronRight, BarChart3, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -41,10 +41,12 @@ export function Sidebar({ isOpen, onClose, isCollapsed, toggleCollapse }: Sideba
 
     const links = [
         { href: "/", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/appointments", label: "Appointments", icon: Calendar },
         { href: "/billing", label: "Billing", icon: Receipt },
         { href: "/customers", label: "Customers", icon: Users },
         { href: "/expenses", label: "Expenses", icon: CreditCard },
         { href: "/staff", label: "Employee", icon: UserCog },
+        { href: "/employee-sales", label: "Staff Sales", icon: BarChart3 },
     ];
 
     return (
@@ -58,7 +60,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed, toggleCollapse }: Sideba
             />
             <aside
                 className={cn(
-                    "fixed left-0 top-0 z-40 h-screen border-r border-border bg-sidebar transition-all duration-300 ease-in-out pt-0 flex flex-col shadow-none",
+                    "fixed left-0 top-0 z-40 h-screen border-r border-border bg-[#FBCFE8] transition-all duration-300 ease-in-out pt-0 flex flex-col shadow-none",
                     isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
                     currentWidth
                 )}

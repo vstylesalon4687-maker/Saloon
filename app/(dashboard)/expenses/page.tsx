@@ -1,16 +1,21 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
-import { Plus, Search, MoreVertical, TrendingDown, Wallet, PieChart, CreditCard, Banknote, Calendar, Save, TrendingUp, Smartphone } from "lucide-react";
+import { Plus, Search, MoreVertical, TrendingDown, Wallet, PieChart, CreditCard, Banknote, Calendar, Save, TrendingUp, Smartphone, Trash2, Edit } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 export default function ExpensesPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [expenses, setExpenses] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
 
     const [newExpense, setNewExpense] = useState({
         title: "",
@@ -38,15 +43,51 @@ export default function ExpensesPage() {
         return () => unsubscribe();
     }, []);
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (openDropdown) setOpenDropdown(null);
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [openDropdown]);
+
+    const handleEdit = (expense: any) => {
+        setIsEditMode(true);
+        setEditingExpenseId(expense.id);
+        setNewExpense({
+            title: expense.title,
+            category: expense.category,
+            amount: expense.amount.toString(),
+            date: expense.date,
+            method: expense.method,
+            status: expense.status
+        });
+        setIsAddModalOpen(true);
+        setOpenDropdown(null);
+    };
+
     const handleSave = async () => {
         if (!newExpense.title || !newExpense.amount) return;
         try {
-            await addDoc(collection(db, "expenses"), {
-                ...newExpense,
-                amount: Number(newExpense.amount),
-                createdAt: new Date()
-            });
+            if (isEditMode && editingExpenseId) {
+                // Update existing expense
+                await updateDoc(doc(db, "expenses", editingExpenseId), {
+                    ...newExpense,
+                    amount: Number(newExpense.amount),
+                    updatedAt: new Date()
+                });
+            } else {
+                // Add new expense
+                await addDoc(collection(db, "expenses"), {
+                    ...newExpense,
+                    amount: Number(newExpense.amount),
+                    createdAt: new Date()
+                });
+            }
             setIsAddModalOpen(false);
+            setIsEditMode(false);
+            setEditingExpenseId(null);
             setNewExpense({
                 title: "",
                 category: "Utilities",
@@ -60,6 +101,28 @@ export default function ExpensesPage() {
         }
     };
 
+    const handleDelete = async (expenseId: string) => {
+        try {
+            await deleteDoc(doc(db, "expenses", expenseId));
+            setDeleteConfirmId(null);
+            setOpenDropdown(null);
+        } catch (error) {
+            console.error("Error deleting expense:", error);
+        }
+    };
+
+    const handleStatusChange = async (expenseId: string, newStatus: string) => {
+        try {
+            await updateDoc(doc(db, "expenses", expenseId), {
+                status: newStatus,
+                updatedAt: new Date()
+            });
+            setEditingStatusId(null);
+        } catch (error) {
+            console.error("Error updating status:", error);
+        }
+    };
+
     const totalExpenses = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
     return (
@@ -69,23 +132,23 @@ export default function ExpensesPage() {
             {/* --- TOP ROW METRICS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Expenses */}
-                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
-                    <div className="bg-rose-50 p-3 rounded-full mr-4 text-rose-600">
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px] group">
+                    <div className="bg-rose-50 p-3 rounded-full mr-4 text-rose-600 group-hover:scale-110 transition-transform">
                         <TrendingDown className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold text-foreground">₹{totalExpenses.toLocaleString()}</h3>
+                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">₹{totalExpenses.toLocaleString()}</h3>
                         <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
                     </div>
                 </div>
 
                 {/* Pending */}
-                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
-                    <div className="bg-amber-50 p-3 rounded-full mr-4 text-amber-600">
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px] group">
+                    <div className="bg-amber-50 p-3 rounded-full mr-4 text-amber-600 group-hover:scale-110 transition-transform">
                         <Calendar className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold text-foreground">
+                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
                             ₹{expenses.filter(e => e.status === 'Pending').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()}
                         </h3>
                         <p className="text-sm font-medium text-muted-foreground">Pending Bills</p>
@@ -93,25 +156,30 @@ export default function ExpensesPage() {
                 </div>
 
                 {/* Categories */}
-                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
-                    <div className="bg-teal-50 p-3 rounded-full mr-4 text-teal-600">
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px] group">
+                    <div className="bg-teal-50 p-3 rounded-full mr-4 text-teal-600 group-hover:scale-110 transition-transform">
                         <PieChart className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold text-foreground">
+                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
                             {new Set(expenses.map(e => e.category)).size}
                         </h3>
                         <p className="text-sm font-medium text-muted-foreground">Active Categories</p>
                     </div>
                 </div>
 
-                {/* Today's Expense Placeholder - Blue */}
-                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px]">
-                    <div className="bg-blue-50 p-3 rounded-full mr-4 text-blue-600">
+                {/* Today's Expense */}
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm hover:shadow-md transition-all flex items-center min-h-[100px] group">
+                    <div className="bg-blue-50 p-3 rounded-full mr-4 text-blue-600 group-hover:scale-110 transition-transform">
                         <Banknote className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-bold text-foreground">₹0</h3>
+                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            ₹{expenses
+                                .filter(e => e.date === new Date().toISOString().split('T')[0])
+                                .reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+                                .toLocaleString()}
+                        </h3>
                         <p className="text-sm font-medium text-muted-foreground">Today's Spend</p>
                     </div>
                 </div>
@@ -134,13 +202,39 @@ export default function ExpensesPage() {
                         </div>
                     </div>
                     <div className="space-y-4">
-                        <div className="text-sm text-center text-muted-foreground py-8 bg-muted/30 rounded-xl border border-border border-dashed">
-                            Visualization coming soon
-                        </div>
+                        {(() => {
+                            const catStats = expenses.reduce((acc, curr) => {
+                                acc[curr.category] = (acc[curr.category] || 0) + Number(curr.amount);
+                                return acc;
+                            }, {} as Record<string, number>);
+
+                            const sortedCats = (Object.entries(catStats) as [string, number][])
+                                .sort(([, a], [, b]) => b - a)
+                                .slice(0, 5);
+
+                            const maxVal = sortedCats[0]?.[1] || 1;
+
+                            if (sortedCats.length === 0) return <div className="text-center text-muted-foreground py-8">No data available</div>;
+
+                            return sortedCats.map(([cat, amount]) => (
+                                <div key={cat} className="group">
+                                    <div className="flex justify-between text-sm mb-1">
+                                        <span className="font-medium text-foreground">{cat}</span>
+                                        <span className="font-bold text-foreground">₹{amount.toLocaleString()}</span>
+                                    </div>
+                                    <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-purple-500 rounded-full transition-all duration-500 group-hover:bg-purple-600"
+                                            style={{ width: `${(amount / maxVal) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            ));
+                        })()}
                     </div>
                 </div>
 
-                {/* Expense Details (Chart Placeholder) */}
+                {/* Expense Details (Daily Chart) */}
                 <div className="bg-card rounded-2xl p-6 shadow-sm border border-border lg:col-span-2">
                     <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                         <div className="flex items-center gap-3">
@@ -152,20 +246,43 @@ export default function ExpensesPage() {
                                 <p className="text-xs text-muted-foreground">Last 7 Days</p>
                             </div>
                         </div>
-                        <Button variant="outline" className="h-8 rounded-lg px-3 text-xs">View Report</Button>
                     </div>
-                    <div className="h-[150px] flex items-end justify-between gap-2 px-2 pb-2">
-                        {/* Fake Bar Chart */}
-                        {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
-                            <div key={day} className="flex flex-col items-center gap-2 group cursor-pointer w-full">
-                                <div
-                                    className="w-full bg-blue-100 rounded-t-md hover:bg-blue-200 transition-all relative group-hover:shadow-md"
-                                    style={{ height: `${[20, 60, 40, 80, 30, 90, 50][i]}%` }}
-                                >
+                    <div className="h-[200px] flex items-end justify-between gap-2 px-2 pb-2">
+                        {(() => {
+                            // Generate last 7 days
+                            const last7Days = Array.from({ length: 7 }, (_, i) => {
+                                const d = new Date();
+                                d.setDate(d.getDate() - (6 - i));
+                                return d.toISOString().split('T')[0];
+                            });
+
+                            const dailyTotals = last7Days.map(date => ({
+                                date,
+                                day: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
+                                amount: expenses
+                                    .filter(e => e.date === date)
+                                    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+                            }));
+
+                            const maxAmount = Math.max(...dailyTotals.map(d => d.amount), 1); // Avoid div by zero
+
+                            return dailyTotals.map((d) => (
+                                <div key={d.date} className="flex flex-col items-center gap-2 group cursor-pointer w-full h-full justify-end">
+                                    <div className="relative w-full flex flex-col justify-end h-full">
+                                        {/* Tooltip */}
+                                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded transition-opacity whitespace-nowrap z-10">
+                                            ₹{d.amount.toLocaleString()}
+                                        </div>
+                                        <div
+                                            className="w-full bg-blue-100 rounded-t-lg hover:bg-blue-500 transition-all duration-300 relative"
+                                            style={{ height: `${Math.max((d.amount / maxAmount) * 100, 4)}%` }} // Min height 4% for Empty days visibility
+                                        >
+                                        </div>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground font-medium">{d.day}</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground font-medium">{day}</span>
-                            </div>
-                        ))}
+                            ));
+                        })()}
                     </div>
                 </div>
             </div>
@@ -207,7 +324,7 @@ export default function ExpensesPage() {
 
 
             {/* --- EXPENSE LIST TABLE --- */}
-            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm border border-border">
                 <div className="p-5 border-b border-border flex flex-col sm:flex-row justify-between items-center gap-4 bg-card">
                     <h2 className="font-bold text-foreground text-lg">Expense History</h2>
                     <div className="flex gap-2 w-full sm:w-auto">
@@ -223,8 +340,8 @@ export default function ExpensesPage() {
                         </Button>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
+                <div className="overflow-x-auto overflow-y-visible">
+                    <table className="w-full text-sm text-left relative">
                         <thead className="bg-accent text-accent-foreground uppercase text-xs font-semibold">
                             <tr>
                                 <th className="px-6 py-4">Expense Title</th>
@@ -233,7 +350,6 @@ export default function ExpensesPage() {
                                 <th className="px-6 py-4">Method</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Amount</th>
-                                <th className="px-6 py-4 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -250,19 +366,30 @@ export default function ExpensesPage() {
                                     <td className="px-6 py-4 text-muted-foreground">{expense.date}</td>
                                     <td className="px-6 py-4 text-muted-foreground">{expense.method}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${expense.status === 'Paid'
-                                            ? 'bg-green-100 text-green-700 border border-green-200'
-                                            : 'bg-red-100 text-red-700 border border-red-200'
-                                            }`}>
-                                            {expense.status}
-                                        </span>
+                                        {editingStatusId === expense.id ? (
+                                            <select
+                                                autoFocus
+                                                value={expense.status}
+                                                onChange={(e) => handleStatusChange(expense.id, e.target.value)}
+                                                onBlur={() => setEditingStatusId(null)}
+                                                className="text-xs font-semibold px-2.5 py-1 rounded-full border-2 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                            >
+                                                <option value="Paid">Paid</option>
+                                                <option value="Pending">Pending</option>
+                                            </select>
+                                        ) : (
+                                            <span
+                                                onClick={() => setEditingStatusId(expense.id)}
+                                                className={`text-xs font-semibold px-2.5 py-1 rounded-full cursor-pointer transition-all hover:shadow-md ${expense.status === 'Paid'
+                                                    ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
+                                                    : 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'
+                                                    }`}
+                                            >
+                                                {expense.status}
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 text-right font-bold text-foreground">₹{expense.amount}</td>
-                                    <td className="px-6 py-4 text-right">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -274,7 +401,7 @@ export default function ExpensesPage() {
             <Modal
                 isOpen={isAddModalOpen}
                 onClose={() => setIsAddModalOpen(false)}
-                title="Add New Expense"
+                title={isEditMode ? "Edit Expense" : "Add New Expense"}
             >
                 <div className="p-6 space-y-4">
                     <div>
@@ -366,11 +493,40 @@ export default function ExpensesPage() {
                     <div className="flex justify-end pt-4 border-t mt-4">
                         <Button variant="outline" className="mr-2 rounded-md" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
                         <Button className="bg-primary hover:bg-primary/90 text-white rounded-md" onClick={handleSave}>
-                            <Save className="w-4 h-4 mr-2" /> Save Expense
+                            <Save className="w-4 h-4 mr-2" /> {isEditMode ? "Update Expense" : "Save Expense"}
                         </Button>
                     </div>
                 </div>
             </Modal>
-        </div>
+
+            {/* --- DELETE CONFIRMATION MODAL --- */}
+            <Modal
+                isOpen={deleteConfirmId !== null}
+                onClose={() => setDeleteConfirmId(null)}
+                title="Delete Expense"
+            >
+                <div className="p-6">
+                    <p className="text-gray-700 mb-6">
+                        Are you sure you want to delete this expense? This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            className="rounded-md"
+                            onClick={() => setDeleteConfirmId(null)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white rounded-md"
+                            onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+        </div >
     );
 }

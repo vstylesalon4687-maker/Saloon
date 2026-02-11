@@ -146,13 +146,13 @@ export default function Dashboard() {
                 </div>
 
                 {/* Sales */}
-                <div className="bg-gradient-to-br from-primary to-pink-600 rounded-2xl p-6 shadow-lg hover-lift flex items-center min-h-[120px] group transition-all text-white">
-                    <div className="bg-white/20 p-4 rounded-full mr-5 text-white group-hover:scale-110 transition-transform shadow-inner">
+                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all">
+                    <div className="bg-pink-50/50 p-4 rounded-full mr-5 text-pink-600 group-hover:scale-110 transition-transform shadow-sm">
                         <Wallet className="w-8 h-8" />
                     </div>
                     <div>
-                        <h3 className="text-3xl font-bold">₹{stats.sales.toFixed(2)}</h3>
-                        <p className="text-sm font-medium opacity-90 uppercase tracking-wide">Total Sales</p>
+                        <h3 className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">₹{stats.sales.toFixed(2)}</h3>
+                        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Sales</p>
                     </div>
                 </div>
             </div>

@@ -11,16 +11,17 @@ import {
     Save
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc } from "firebase/firestore";
 
 export default function StaffPage() {
     const [employees, setEmployees] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     // Form State
-    const [formData, setFormData] = useState({
+    const initialFormState = {
         empId: '',
         firstName: '',
         lastName: '',
@@ -32,7 +33,9 @@ export default function StaffPage() {
         designation: '',
         salary: '',
         address: ''
-    });
+    };
+
+    const [formData, setFormData] = useState(initialFormState);
 
     // Fetch Employees Real-time
     useEffect(() => {
@@ -45,35 +48,64 @@ export default function StaffPage() {
             setEmployees(data);
             setLoading(false);
 
-            // Auto-generate next ID
-            if (data.length > 0) {
-                const maxId = Math.max(...data.map(e => parseInt(e.empId || "10000")));
+            // Only set ID if we are NOT editing and the modal is closed to assume "next" state
+            if (!isModalOpen && !editingId) {
+                const maxId = data.length > 0 ? Math.max(...data.map(e => parseInt(e.empId || "10000"))) : 10342;
                 setFormData(prev => ({ ...prev, empId: (maxId + 1).toString() }));
-            } else {
-                setFormData(prev => ({ ...prev, empId: '10342' }));
             }
         });
         return () => unsubscribe();
-    }, []);
+    }, [isModalOpen, editingId]); // Added dependencies to refresh ID when closing modal
+
+    const handleAddNew = () => {
+        setEditingId(null);
+        // Calculate ID
+        const maxId = employees.length > 0 ? Math.max(...employees.map(e => parseInt(e.empId || "10000"))) : 10342;
+
+        setFormData({
+            ...initialFormState,
+            empId: (maxId + 1).toString()
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (emp: any) => {
+        setEditingId(emp.id);
+        setFormData({
+            empId: emp.empId || '',
+            firstName: emp.firstName || '',
+            lastName: emp.lastName || '',
+            mobile: emp.mobile || '',
+            gender: emp.gender || '',
+            dob: emp.dob || '',
+            doj: emp.doj || '',
+            specialization: emp.specialization || '',
+            designation: emp.designation || '',
+            salary: emp.salary || '',
+            address: emp.address || ''
+        });
+        setIsModalOpen(true);
+    };
 
     const handleSave = async () => {
         try {
-            await addDoc(collection(db, "staff"), {
+            const payload = {
                 ...formData,
                 firstName: formData.firstName.toUpperCase(), // Normalize
-                createdAt: new Date()
-            });
+            };
+
+            if (editingId) {
+                await updateDoc(doc(db, "staff", editingId), payload);
+            } else {
+                await addDoc(collection(db, "staff"), {
+                    ...payload,
+                    createdAt: new Date()
+                });
+            }
+
             setIsModalOpen(false);
-            // Reset form but keep ID logic for next time
-            setFormData(prev => ({
-                ...prev,
-                firstName: '',
-                lastName: '',
-                mobile: '',
-                gender: '',
-                salary: '',
-                address: ''
-            }));
+            setEditingId(null);
+            // Form reset handled by handleAddNew or effect
         } catch (error) {
             console.error("Error saving employee:", error);
             alert("Failed to save employee");
@@ -91,26 +123,26 @@ export default function StaffPage() {
 
             {/* Top Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center">
-                    <div className="bg-purple-50 p-3 rounded-xl mr-4 text-purple-600"><Users className="w-8 h-8" /></div>
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center group">
+                    <div className="bg-purple-50 p-3 rounded-xl mr-4 text-purple-600 group-hover:scale-110 transition-transform"><Users className="w-8 h-8" /></div>
                     <div>
-                        <h3 className="text-2xl font-bold text-foreground">{employees.length}</h3>
+                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">{employees.length}</h3>
                         <p className="text-sm text-muted-foreground font-medium">Total Employees</p>
                     </div>
                 </div>
                 {/* Active/Present Placeholder */}
-                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center">
-                    <div className="bg-emerald-50 p-3 rounded-xl mr-4 text-emerald-600"><User className="w-8 h-8" /></div>
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center group">
+                    <div className="bg-emerald-50 p-3 rounded-xl mr-4 text-emerald-600 group-hover:scale-110 transition-transform"><User className="w-8 h-8" /></div>
                     <div>
-                        <h3 className="text-2xl font-bold text-foreground">{employees.length}</h3>
+                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">{employees.length}</h3>
                         <p className="text-sm text-muted-foreground font-medium">Active Staff</p>
                     </div>
                 </div>
                 {/* On Leave Placeholder */}
-                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center">
-                    <div className="bg-amber-50 p-3 rounded-xl mr-4 text-amber-600"><User className="w-8 h-8" /></div>
+                <div className="bg-card rounded-2xl p-5 border border-border shadow-sm transition-shadow hover:shadow-md flex items-center group">
+                    <div className="bg-amber-50 p-3 rounded-xl mr-4 text-amber-600 group-hover:scale-110 transition-transform"><User className="w-8 h-8" /></div>
                     <div>
-                        <h3 className="text-2xl font-bold text-foreground">0</h3>
+                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">0</h3>
                         <p className="text-sm text-muted-foreground font-medium">On Leave</p>
                     </div>
                 </div>
@@ -129,7 +161,7 @@ export default function StaffPage() {
                 </div>
                 <Button
                     className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2 px-6 rounded-xl shadow-sm h-10"
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={handleAddNew}
                 >
                     <Plus className="w-4 h-4" /> ADD NEW
                 </Button>
@@ -144,7 +176,7 @@ export default function StaffPage() {
                                 <th className="px-6 py-4">#</th>
                                 <th className="px-6 py-4">Emp ID</th>
                                 <th className="px-6 py-4">First Name</th>
-                                <th className="px-6 py-4">Last Name</th>
+                                <th className="px-6 py-4">Area of Specialization</th>
                                 <th className="px-6 py-4">DOB</th>
                                 <th className="px-6 py-4">DOJ</th>
                             </tr>
@@ -152,13 +184,17 @@ export default function StaffPage() {
                         <tbody className="divide-y divide-border">
                             {loading && <tr><td colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
                             {!loading && filteredEmployees.map((emp, index) => (
-                                <tr key={emp.id} className="hover:bg-muted/50 transition-colors border-b border-border last:border-0">
+                                <tr
+                                    key={emp.id}
+                                    className="hover:bg-muted/50 transition-colors border-b border-border last:border-0 cursor-pointer"
+                                    onClick={() => handleEdit(emp)}
+                                >
                                     <td className="px-6 py-3 font-semibold text-foreground">{index + 1}</td>
                                     <td className="px-6 py-3 text-primary font-medium">{emp.empId}</td>
                                     <td className="px-6 py-3 text-foreground font-medium">{emp.firstName}</td>
-                                    <td className="px-6 py-3 text-muted-foreground">{emp.lastName}</td>
+                                    <td className="px-6 py-3 text-muted-foreground">{emp.specialization || '-'}</td>
                                     <td className="px-6 py-3 text-muted-foreground">{emp.dob}</td>
-                                    <td className="px-6 py-3 text-muted-foreground">{emp.doj || emp.createdAt?.seconds ? new Date(emp.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</td>
+                                    <td className="px-6 py-3 text-muted-foreground">{emp.doj || emp.createdAt?.seconds ? new Date(emp.createdAt?.seconds * 1000 || emp.doj).toLocaleDateString() : 'N/A'}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -170,7 +206,7 @@ export default function StaffPage() {
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title="Add / Edit Employee"
+                title={editingId ? "Edit Employee" : "Add New Employee"}
                 className="max-w-4xl"
             >
                 <div className="p-6">
@@ -185,12 +221,21 @@ export default function StaffPage() {
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-semibold text-gray-700 mb-1 block">Name</label>
+                            <label className="text-sm font-semibold text-gray-700 mb-1 block">First Name</label>
                             <Input
                                 value={formData.firstName}
                                 onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                                 className="border-gray-200 focus:ring-primary rounded-md"
                                 placeholder="First Name"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-semibold text-gray-700 mb-1 block">Last Name</label>
+                            <Input
+                                value={formData.lastName}
+                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                className="border-gray-200 focus:ring-primary rounded-md"
+                                placeholder="Last Name"
                             />
                         </div>
                         <div>
@@ -233,6 +278,7 @@ export default function StaffPage() {
                                 <option value="">Select Area</option>
                                 <option value="Hair">Hair</option>
                                 <option value="Skin">Skin</option>
+                                <option value="Both">Both</option>
                             </select>
                         </div>
                         <div>
@@ -270,7 +316,7 @@ export default function StaffPage() {
 
                     <div className="flex justify-end pt-4 border-t">
                         <Button className="bg-primary hover:bg-primary/90 text-white px-6 rounded-md shadow-lg shadow-pink-200/50" onClick={handleSave}>
-                            <Save className="w-4 h-4 mr-2" /> Save
+                            <Save className="w-4 h-4 mr-2" /> {editingId ? "Update" : "Save"}
                         </Button>
                     </div>
                 </div>

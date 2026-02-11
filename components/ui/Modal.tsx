@@ -11,9 +11,10 @@ interface ModalProps {
     children: React.ReactNode;
     className?: string;
     variant?: 'default' | 'drawer-right';
+    overlayClassName?: string;
 }
 
-export function Modal({ isOpen, onClose, title, children, className = "", variant = 'default' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, className = "", variant = 'default', overlayClassName }: ModalProps) {
     if (!isOpen) return null;
 
     const isDrawer = variant === 'drawer-right';
@@ -22,7 +23,8 @@ export function Modal({ isOpen, onClose, title, children, className = "", varian
         <div
             className={cn(
                 "fixed inset-0 z-[100] flex bg-black/50 backdrop-blur-sm animate-in fade-in duration-200",
-                isDrawer ? "justify-end items-stretch" : "items-center justify-center"
+                isDrawer ? "justify-end items-stretch" : "items-center justify-center",
+                overlayClassName
             )}
             onClick={onClose}
         >
