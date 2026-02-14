@@ -66,8 +66,20 @@ export default function Dashboard() {
             const revenueByMethod: { [key: string]: number } = {};
             snap.docs.forEach(doc => {
                 const data = doc.data();
-                const method = data.paymentMethod || 'Cash';
-                revenueByMethod[method] = (revenueByMethod[method] || 0) + (Number(data.grandTotal) || 0);
+                // Check if detailed payment info is available (for split payments or newer records)
+                if (data.paymentDetails && data.paymentDetails.modes && Array.isArray(data.paymentDetails.modes)) {
+                    data.paymentDetails.modes.forEach((mode: any) => {
+                        const amount = Number(mode.amount) || 0;
+                        if (amount > 0) {
+                            revenueByMethod[mode.method] = (revenueByMethod[mode.method] || 0) + amount;
+                        }
+                    });
+                } else {
+                    // Fallback for older records
+                    const method = data.paymentMethod || 'Cash';
+                    // Avoid double counting 'Split' if it was somehow recorded without details, or just record it as 'Split'
+                    revenueByMethod[method] = (revenueByMethod[method] || 0) + (Number(data.grandTotal) || 0);
+                }
             });
 
             // Convert to chart format
@@ -105,7 +117,31 @@ export default function Dashboard() {
         };
     }, []);
 
-    const COLORS = ['#db2777', '#d946ef', '#8b5cf6', '#ec4899', '#f472b6', '#c084fc'];
+    const COLORS = [
+        '#10b981', // Cash - Green
+        '#3b82f6', // Visa - Blue
+        '#ef4444', // MasterCard - Red
+        '#8b5cf6', // Amex - Purple
+        '#f59e0b', // UPI - Orange
+        '#06b6d4', // Finance - Cyan
+        '#f472b6', // Maestro - Pink
+        '#6366f1', // Split - Indigo
+        '#9ca3af'  // Other - Gray
+    ];
+
+    // Helper to map method names to consistent colors (optional, but good for consistency)
+    const getMethodColor = (name: string, index: number) => {
+        const lower = name.toLowerCase();
+        if (lower.includes('cash')) return COLORS[0];
+        if (lower.includes('visa')) return COLORS[1];
+        if (lower.includes('master')) return COLORS[2];
+        if (lower.includes('amex')) return COLORS[3];
+        if (lower.includes('upi') || lower.includes('ewallet') || lower.includes('gpay')) return COLORS[4];
+        if (lower.includes('finance')) return COLORS[5];
+        if (lower.includes('maestro')) return COLORS[6];
+        if (lower.includes('split')) return COLORS[7];
+        return COLORS[index % COLORS.length];
+    };
 
     return (
         <div className="space-y-6 animate-fade-in p-4 lg:p-6">
@@ -298,7 +334,7 @@ export default function Dashboard() {
                                         paddingAngle={5}
                                     >
                                         {revenueStreamData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="white" strokeWidth={2} />
+                                            <Cell key={`cell-${index}`} fill={getMethodColor(entry.name, index)} stroke="white" strokeWidth={2} />
                                         ))}
                                     </Pie>
                                     <Tooltip

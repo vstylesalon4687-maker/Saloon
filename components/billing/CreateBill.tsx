@@ -63,6 +63,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
     });
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [isCustomCategory, setIsCustomCategory] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     // Derived Totals
     const subTotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -256,7 +257,7 @@ export function CreateBill({ onBack }: CreateBillProps) {
         setActiveSearchField(null);
     };
 
-    const handleSaveBill = async () => {
+    const handleSaveBill = async (paymentMethod: string = 'Cash', paymentDetails: any = null) => {
         try {
             let finalCustomerId = selectedCustomer?.id || "walk_in";
             let finalCustomerName = customerName || (selectedCustomer ? `${selectedCustomer.firstName} ${selectedCustomer.lastName || ''}`.trim() : "Walk-in Customer");
@@ -312,7 +313,8 @@ export function CreateBill({ onBack }: CreateBillProps) {
                 discountValue,
                 grandTotal,
                 createdAt: new Date(),
-                paymentMethod: 'Cash' // Default, assuming handled in payment modal
+                paymentMethod: paymentMethod, // Use the passed method
+                paymentDetails: paymentDetails // Save full details logic
             });
             // Reset form for next bill
             setItems([]);
@@ -326,8 +328,8 @@ export function CreateBill({ onBack }: CreateBillProps) {
             setActiveTab('details');
             setBillDate(new Date().toISOString().split('T')[0]);
 
-            // Optional: Show success message/toast here if available
-            // alert("Bill saved successfully!");
+            // Navigate back to billing home page
+            onBack();
         } catch (error) {
             console.error("Error saving bill:", error);
         }
@@ -937,7 +939,29 @@ export function CreateBill({ onBack }: CreateBillProps) {
                         <div className="p-4 bg-card border-t border-border">
                             <Button
                                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-12 shadow-xl shadow-primary/20 font-bold text-lg rounded-xl transition-transform hover:scale-[1.02]"
-                                onClick={() => setIsPaymentModalOpen(true)}
+                                onClick={() => {
+                                    // Validate customer name
+                                    const finalCustomerName = customerName || (selectedCustomer ? `${selectedCustomer.firstName} ${selectedCustomer.lastName || ''}`.trim() : "");
+                                    if (!finalCustomerName) {
+                                        setValidationError("Please enter customer name.");
+                                        return;
+                                    }
+
+                                    // Validate customer phone
+                                    const finalCustomerPhone = customerPhone || (selectedCustomer?.mobile || "");
+                                    if (!finalCustomerPhone || finalCustomerPhone.length < 10) {
+                                        setValidationError("Please enter a valid customer phone number (minimum 10 digits).");
+                                        return;
+                                    }
+
+                                    // Validate staff selection
+                                    const hasMissingStaff = items.some(item => !item.staff || item.staff === "");
+                                    if (hasMissingStaff) {
+                                        setValidationError("Please select a staff member for all items.");
+                                        return;
+                                    }
+                                    setIsPaymentModalOpen(true);
+                                }}
                                 disabled={items.length === 0}
                             >
                                 Generate Bill <Printer className="w-5 h-5 ml-2" />
@@ -964,9 +988,9 @@ export function CreateBill({ onBack }: CreateBillProps) {
                 isOpen={isPaymentModalOpen}
                 onClose={() => setIsPaymentModalOpen(false)}
                 totalAmount={grandTotal}
-                onConfirm={() => {
+                onConfirm={(method, details) => {
                     setIsPaymentModalOpen(false);
-                    handleSaveBill();
+                    handleSaveBill(method, details);
                 }}
             />
 
@@ -1118,6 +1142,35 @@ export function CreateBill({ onBack }: CreateBillProps) {
                     </div>
                 </div>
             </Modal >
+
+            {/* Validation Error Modal */}
+            <Modal
+                isOpen={!!validationError}
+                onClose={() => setValidationError(null)}
+                title="Validation Error"
+                className="max-w-md"
+            >
+                <div className="p-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm text-foreground">{validationError}</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end">
+                        <Button
+                            onClick={() => setValidationError(null)}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-6"
+                        >
+                            OK
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div >
     );
 }

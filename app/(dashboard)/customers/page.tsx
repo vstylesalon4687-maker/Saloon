@@ -7,7 +7,8 @@ import {
     User,
     CreditCard,
     UserX,
-    Clock
+    Clock,
+    LayoutDashboard
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { db } from "@/lib/firebase";
@@ -20,6 +21,7 @@ export default function CustomersPage() {
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [dateRange, setDateRange] = useState({ from: "", to: "" });
     const [clients, setClients] = useState<any[]>([]);
+    const [bills, setBills] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Modal State
@@ -40,6 +42,49 @@ export default function CustomersPage() {
         });
         return () => unsubscribe();
     }, []);
+
+    // Fetch Bills
+    useEffect(() => {
+        const unsubscribe = onSnapshot(collection(db, "bills"), (snapshot) => {
+            const data = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setBills(data);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Calculate metrics
+    const calculateMetrics = () => {
+        const customerVisitCount: { [key: string]: number } = {};
+
+        bills.forEach(bill => {
+            if (bill.customerId && bill.customerId !== 'walk_in') {
+                customerVisitCount[bill.customerId] = (customerVisitCount[bill.customerId] || 0) + 1;
+            }
+        });
+
+        let newClients = 0; // 1 visit
+        let regularClients = 0; // 2+ visits
+
+        Object.values(customerVisitCount).forEach(visitCount => {
+            if (visitCount === 1) {
+                newClients++;
+            } else if (visitCount >= 2) {
+                regularClients++;
+            }
+        });
+
+        return {
+            totalClients: Object.keys(customerVisitCount).length,
+            newClients,
+            regularClients,
+            totalBills: bills.length
+        };
+    };
+
+    const metrics = calculateMetrics();
 
     const filteredClients = clients.filter(c => {
         const name = `${c.firstName || ''} ${c.lastName || ''} ${c.name || ''}`.trim();
@@ -67,53 +112,48 @@ export default function CustomersPage() {
         <div className="space-y-6 animate-fade-in p-4 bg-background min-h-screen font-sans relative">
 
             {/* Stats Cards Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Total Clients */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
-                    <div className="bg-purple-50 p-2.5 rounded-xl text-purple-600 group-hover:scale-110 transition-transform"><Users className="w-5 h-5" /></div>
+                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex gap-4 items-center hover:shadow-md transition-shadow">
+                    <div className="bg-purple-50 p-3 rounded-xl">
+                        <Users className="w-8 h-8 text-purple-600" />
+                    </div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.length}</h3>
-                        <p className="text-xs text-muted-foreground font-medium">Total Clients</p>
+                        <h3 className="text-3xl font-bold text-gray-900">{metrics.totalClients}</h3>
+                        <p className="text-sm text-gray-600 font-medium">Total Clients</p>
                     </div>
                 </div>
-                {/* Male */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
-                    <div className="bg-teal-50 p-2.5 rounded-xl text-teal-600 group-hover:scale-110 transition-transform"><User className="w-5 h-5" /></div>
-                    <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => (c.gender || '').toLowerCase() === 'male').length}</h3>
-                        <p className="text-xs text-muted-foreground font-medium">Male</p>
-                    </div>
-                </div>
-                {/* Female */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
-                    <div className="bg-pink-50 p-2.5 rounded-xl text-pink-600 group-hover:scale-110 transition-transform"><User className="w-5 h-5" /></div>
-                    <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => (c.gender || '').toLowerCase() === 'female').length}</h3>
-                        <p className="text-xs text-muted-foreground font-medium">Female</p>
-                    </div>
-                </div>
-                {/* Members */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
-                    <div className="bg-rose-50 p-2.5 rounded-xl text-rose-600 group-hover:scale-110 transition-transform"><CreditCard className="w-5 h-5" /></div>
-                    <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => c.type === 'Member').length}</h3>
-                        <p className="text-xs text-muted-foreground font-medium">Members</p>
-                    </div>
-                </div>
-                {/* Non-Members */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
-                    <div className="bg-slate-50 p-2.5 rounded-xl text-slate-600 group-hover:scale-110 transition-transform"><UserX className="w-5 h-5" /></div>
-                    <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.filter(c => c.type !== 'Member').length}</h3>
-                        <p className="text-xs text-muted-foreground font-medium">Non-Members</p>
-                    </div>
-                </div>
+
                 {/* New Clients */}
-                <div className="bg-card rounded-2xl p-4 border border-border shadow-sm flex gap-3 items-center hover:shadow-md transition-all group">
-                    <div className="bg-amber-50 p-2.5 rounded-xl text-amber-600 group-hover:scale-110 transition-transform"><Clock className="w-5 h-5" /></div>
+                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex gap-4 items-center hover:shadow-md transition-shadow">
+                    <div className="bg-green-50 p-3 rounded-xl">
+                        <User className="w-8 h-8 text-green-600" />
+                    </div>
                     <div>
-                        <h3 className="text-xl font-bold leading-none text-foreground group-hover:text-primary transition-colors">{clients.length}</h3>
-                        <p className="text-xs text-muted-foreground font-medium">New Clients</p>
+                        <h3 className="text-3xl font-bold text-gray-900">{metrics.newClients}</h3>
+                        <p className="text-sm text-gray-600 font-medium">New Clients</p>
+                    </div>
+                </div>
+
+                {/* Regular Clients */}
+                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex gap-4 items-center hover:shadow-md transition-shadow">
+                    <div className="bg-teal-50 p-3 rounded-xl">
+                        <User className="w-8 h-8 text-teal-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-3xl font-bold text-gray-900">{metrics.regularClients}</h3>
+                        <p className="text-sm text-gray-600 font-medium">Regular Clients</p>
+                    </div>
+                </div>
+
+                {/* Total Bills */}
+                <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex gap-4 items-center hover:shadow-md transition-shadow">
+                    <div className="bg-blue-50 p-3 rounded-xl">
+                        <LayoutDashboard className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <div>
+                        <h3 className="text-3xl font-bold text-gray-900">{metrics.totalBills}</h3>
+                        <p className="text-sm text-gray-600 font-medium">Total Bills</p>
                     </div>
                 </div>
             </div>
@@ -223,7 +263,7 @@ export default function CustomersPage() {
                                     </td>
                                     <td className="px-6 py-4 text-center text-muted-foreground text-xs">{client.mobile}</td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className="bg-pink-50 text-pink-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-pink-100 uppercase">
+                                        <span className="bg-white text-gray-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-gray-200 uppercase">
                                             {client.gender || 'Unisex'}
                                         </span>
                                     </td>

@@ -175,26 +175,44 @@ export function PaymentModal({ isOpen, onClose, totalAmount, onConfirm }: Paymen
                 {/* Right Content: Summary & Actions */}
                 <div className="flex-1 flex flex-col bg-card relative">
                     {/* Header Summary Badges */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-white sticky top-0 z-10">
-                        <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-gray-800">Total:</span>
-                            <div className="bg-[#6366f1] text-white text-base font-bold px-3 py-1 rounded shadow-sm">
-                                ₹{totalAmount.toFixed(2)}
+                    <div className="flex items-center justify-between px-6 py-4 bg-white sticky top-0 z-10">
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-gray-800 w-20">Tender:</span>
+                                <div className="bg-[#06b6d4] text-white text-2xl font-bold px-4 py-2 rounded-lg shadow-sm min-w-[160px] text-center">
+                                    ₹{totalTender.toFixed(2)}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-gray-800 w-20">Total:</span>
+                                <div className="bg-[#6366f1] text-white text-2xl font-bold px-4 py-2 rounded-lg shadow-sm min-w-[160px] text-center">
+                                    ₹{totalAmount.toFixed(2)}
+                                </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-lg font-bold text-gray-800">Tender:</span>
-                            <div className="bg-[#06b6d4] text-white text-base font-bold px-3 py-1 rounded shadow-sm">
-                                ₹{totalTender.toFixed(2)}
+                        {totalTender > totalAmount && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-gray-800 w-24">Balance:</span>
+                                <div className="bg-[#10b981] text-white text-2xl font-bold px-4 py-2 rounded-lg shadow-sm animate-pulse min-w-[160px] text-center">
+                                    ₹{(totalTender - totalAmount).toFixed(2)}
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        {totalTender < totalAmount && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-gray-800 w-24">Pending:</span>
+                                <div className="bg-[#ef4444] text-white text-2xl font-bold px-4 py-2 rounded-lg shadow-sm animate-pulse min-w-[160px] text-center">
+                                    ₹{(totalAmount - totalTender).toFixed(2)}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Payment Cards List */}
                     <div className="flex-1 bg-gray-50 p-6 overflow-y-auto content-start">
                         <div className="flex flex-wrap gap-4 content-start items-start">
                             {payments.map((payment, index) => (
-                                <div key={payment.id} className="relative w-full md:w-[48%] bg-white border border-blue-400 rounded-md p-2 shadow-sm animate-in zoom-in-95 duration-200">
+                                <div key={payment.id} className="relative w-full md:w-[48%] bg-white rounded-md p-2 shadow-sm animate-in zoom-in-95 duration-200">
                                     {/* Remove Button */}
                                     <button
                                         onClick={() => handleRemovePayment(payment.id)}
@@ -216,8 +234,14 @@ export function PaymentModal({ isOpen, onClose, totalAmount, onConfirm }: Paymen
                                                     <div className="absolute left-0 top-0 bottom-0 w-8 bg-[#06b6d4] flex items-center justify-center rounded-l-md text-white">
                                                         <CreditCard className="w-4 h-4" />
                                                     </div>
-                                                    <select className="w-full pl-9 pr-2 py-1 border border-gray-300 rounded-r-md text-xs font-semibold outline-none focus:ring-1 focus:ring-blue-500 h-8">
-                                                        <option>{payment.method}</option>
+                                                    <select
+                                                        className="w-full pl-9 pr-2 py-1 border border-gray-300 rounded-r-md text-xs font-semibold outline-none focus:ring-1 focus:ring-blue-500 h-8"
+                                                        value={payment.method}
+                                                        onChange={(e) => handleUpdatePayment(payment.id, 'method', e.target.value)}
+                                                    >
+                                                        {paymentModes.filter(m => m.id !== 'Cash').map(mode => (
+                                                            <option key={mode.id} value={mode.id}>{mode.label}</option>
+                                                        ))}
                                                     </select>
                                                 </div>
                                                 <div className="relative flex h-8">
@@ -233,18 +257,34 @@ export function PaymentModal({ isOpen, onClose, totalAmount, onConfirm }: Paymen
                                             </>
                                         )}
 
-                                        {/* Amount Field */}
-                                        <div className="relative flex shadow-sm h-9">
-                                            <div className="w-10 bg-gray-800 flex items-center justify-center rounded-l-md text-white text-[10px] font-bold">
-                                                INR
+                                        {/* Total Field (Read-only display) */}
+                                        <div className="relative flex shadow-md h-16 mb-3">
+                                            <div className="w-32 bg-[#6366f1] flex items-center justify-center rounded-l-lg text-white text-lg font-bold">
+                                                TOTAL
                                             </div>
-                                            <input
-                                                type="number"
-                                                className="flex-1 border-y border-r border-gray-300 rounded-r-md px-2 py-1 text-lg font-bold text-right outline-none text-gray-800 focus:ring-1 focus:ring-blue-500/20 focus:border-blue-500"
-                                                value={payment.amount}
-                                                onChange={(e) => handleUpdatePayment(payment.id, 'amount', e.target.value)}
-                                                onFocus={(e) => e.target.select()}
-                                            />
+                                            <div className="flex-1 border-2 border-l-0 border-gray-300 rounded-r-lg px-4 text-2xl font-bold text-right text-gray-900 bg-gray-50 flex items-center justify-end">
+                                                ₹{totalAmount.toFixed(2)}
+                                            </div>
+                                        </div>
+
+                                        {/* Tender Field */}
+                                        <div className="relative flex shadow-md h-16">
+                                            <div className="w-32 bg-gray-800 flex items-center justify-center rounded-l-lg text-white text-lg font-bold">
+                                                TENDER
+                                            </div>
+                                            <div className="flex-1 border-2 border-l-0 border-gray-300 rounded-r-lg bg-white flex items-center justify-end px-4 relative">
+                                                <span className="text-2xl font-bold text-gray-900">
+                                                    ₹{Number(payment.amount || 0).toFixed(2)}
+                                                </span>
+                                                <input
+                                                    type="number"
+                                                    className="absolute inset-0 w-full text-2xl font-bold text-right outline-none text-transparent bg-transparent focus:ring-0 border-0 px-4 cursor-text"
+                                                    value={payment.amount}
+                                                    onChange={(e) => handleUpdatePayment(payment.id, 'amount', e.target.value)}
+                                                    onFocus={(e) => e.target.select()}
+                                                    style={{ caretColor: '#111827' }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -253,15 +293,7 @@ export function PaymentModal({ isOpen, onClose, totalAmount, onConfirm }: Paymen
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="p-4 border-t border-border flex justify-between items-center bg-card absolute bottom-0 left-0 right-0 w-full">
-                        <Button
-                            variant="secondary"
-                            className="bg-muted hover:bg-muted/80 text-foreground px-6 h-10 font-bold rounded-xl flex items-center gap-2 shadow-sm uppercase tracking-wide border border-border"
-                            onClick={onClose}
-                        >
-                            Cancel
-                        </Button>
-
+                    <div className="p-4 border-t border-border flex justify-end items-center bg-card absolute bottom-0 left-0 right-0 w-full">
                         <div className="flex gap-2">
                             <Button
                                 variant="outline"
@@ -322,6 +354,6 @@ export function PaymentModal({ isOpen, onClose, totalAmount, onConfirm }: Paymen
                     </div>
                 </div>
             </Modal>
-        </Modal>
+        </Modal >
     );
 }
