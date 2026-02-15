@@ -22,6 +22,11 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "VStyles Spa & Salon",
   description: "Premium management system for VStyles Spa & Salon",
+  icons: {
+    icon: "/icon-v2.png",
+    apple: "/icon-v2.png",
+  },
+
 };
 
 export default function RootLayout({

@@ -12,7 +12,7 @@ interface BillDetailViewProps {
 export function BillDetailView({ bill, onClose, onCancel }: BillDetailViewProps) {
     if (!bill) return null;
 
-    // Calculate/Derive values
+
     // Calculate/Derive values
     const invoiceId = bill.invoiceNo ? `${bill.invoiceNo}` : (bill.id ? bill.id.substring(0, 8).toUpperCase() : "---");
     const customerName = bill.customerName || "Walk-in Customer";
