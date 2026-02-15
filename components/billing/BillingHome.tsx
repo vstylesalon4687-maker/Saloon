@@ -12,7 +12,8 @@ import {
     Tag,
     Printer,
     User,
-    Percent
+    Percent,
+    History
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
@@ -32,6 +33,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
     const [showDateFilter, setShowDateFilter] = useState(false); // For calendar filter
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [showHistory, setShowHistory] = useState(false);
 
     // Dashboard Logic State
     const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
@@ -88,6 +90,10 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
             const invDate = inv.date; // Assuming format like "2024-02-07" or similar
             if (startDate && invDate < startDate) matchesDate = false;
             if (endDate && invDate > endDate) matchesDate = false;
+        } else if (!showHistory) {
+            // If not showing history and no manual date filter, show ONLY Today
+            const today = new Date().toISOString().split('T')[0];
+            if (inv.date !== today) matchesDate = false;
         }
 
         return matchesSearch && matchesDate;
@@ -117,9 +123,12 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
         let menCount = 0;
         let womenCount = 0;
         let cashSales = 0;
-        let cardSales = 0;
+        let visaSales = 0;
+        let masterCardSales = 0;
+        let amexSales = 0;
+        let maestroSales = 0;
         let upiSales = 0;
-        let otherSales = 0;
+        let financeSales = 0;
         let totalDiscount = 0;
 
         filteredInvoices.forEach(inv => {
@@ -154,11 +163,32 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
             serviceRevenue += invServiceTotal;
             productRevenue += invProductTotal;
 
-            const method = (inv.paymentMethod || 'Cash').toLowerCase();
-            if (method.includes('cash')) cashSales += grandTotal;
-            else if (method.includes('card') || method.includes('visa') || method.includes('master')) cardSales += grandTotal;
-            else if (method.includes('upi') || method.includes('pay') || method.includes('wallet')) upiSales += grandTotal;
-            else otherSales += grandTotal;
+            // Track payment methods individually
+            if (inv.paymentDetails && inv.paymentDetails.modes && Array.isArray(inv.paymentDetails.modes)) {
+                // For split or detailed payments
+                inv.paymentDetails.modes.forEach((mode: any) => {
+                    const amount = Number(mode.amount) || 0;
+                    const method = (mode.method || 'Cash').toLowerCase();
+
+                    if (method.includes('cash')) cashSales += amount;
+                    else if (method.includes('visa')) visaSales += amount;
+                    else if (method.includes('master')) masterCardSales += amount;
+                    else if (method.includes('amex')) amexSales += amount;
+                    else if (method.includes('maestro')) maestroSales += amount;
+                    else if (method.includes('upi') || method.includes('wallet') || method.includes('ewallet')) upiSales += amount;
+                    else if (method.includes('finance')) financeSales += amount;
+                });
+            } else {
+                // For simple payment method
+                const method = (inv.paymentMethod || 'Cash').toLowerCase();
+                if (method.includes('cash')) cashSales += grandTotal;
+                else if (method.includes('visa')) visaSales += grandTotal;
+                else if (method.includes('master')) masterCardSales += grandTotal;
+                else if (method.includes('amex')) amexSales += grandTotal;
+                else if (method.includes('maestro')) maestroSales += grandTotal;
+                else if (method.includes('upi') || method.includes('wallet') || method.includes('ewallet')) upiSales += grandTotal;
+                else if (method.includes('finance')) financeSales += grandTotal;
+            }
 
             if (inv.customerId) {
                 const cust = customers.find(c => c.id === inv.customerId);
@@ -166,6 +196,25 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                     if (cust.gender === 'Male') menCount++;
                     else if (cust.gender === 'Female') womenCount++;
                 }
+            }
+        });
+
+        // Count customer visits and categorize
+        const customerVisitCount: { [key: string]: number } = {};
+        invoices.forEach(inv => {
+            if (inv.customerId && inv.customerId !== 'walk_in') {
+                customerVisitCount[inv.customerId] = (customerVisitCount[inv.customerId] || 0) + 1;
+            }
+        });
+
+        let regularCustomers = 0; // 1-2 visits
+        let oldCustomers = 0; // 3+ visits
+
+        Object.values(customerVisitCount).forEach(visitCount => {
+            if (visitCount >= 1 && visitCount <= 2) {
+                regularCustomers++;
+            } else if (visitCount >= 3) {
+                oldCustomers++;
             }
         });
 
@@ -177,11 +226,16 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
             menCount,
             womenCount,
             cashSales,
-            cardSales,
+            visaSales,
+            masterCardSales,
+            amexSales,
+            maestroSales,
             upiSales,
-            otherSales,
+            financeSales,
             totalDiscount,
-            totalBills: filteredInvoices.length
+            totalBills: filteredInvoices.length,
+            regularCustomers,
+            oldCustomers
         };
     };
 
@@ -364,7 +418,21 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                                 </div>
                             </div>
                         )}
+
                     </div>
+
+                    {/* Bill History Toggle */}
+                    <Button
+                        variant={showHistory ? "secondary" : "outline"}
+                        onClick={() => setShowHistory(!showHistory)}
+                        className={cn(
+                            "flex items-center gap-2 px-4 shadow-sm rounded-xl border-input h-10 transition-colors",
+                            showHistory ? "bg-purple-100 text-purple-700 border-purple-200" : "hover:bg-accent"
+                        )}
+                    >
+                        <History className="w-4 h-4" />
+                        <span className="font-medium whitespace-nowrap">{showHistory ? "Hide History" : "Bill History"}</span>
+                    </Button>
 
                     {/* Search Box */}
                     <div className="relative w-full sm:w-80">
@@ -439,21 +507,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                         </div>
                     </div>
 
-                    {/* Row 2: Gender & Cash */}
-                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
-                        <div className="flex gap-4 w-full justify-around">
-                            <div className="text-center">
-                                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-2 text-blue-600 font-bold"><User className="w-5 h-5" /></div>
-                                <div className="text-xl font-bold text-blue-900">{metrics.menCount}</div>
-                                <div className="text-[10px] font-bold text-blue-400">MEN</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="bg-pink-100 w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-2 text-pink-600 font-bold"><User className="w-5 h-5" /></div>
-                                <div className="text-xl font-bold text-pink-900">{metrics.womenCount}</div>
-                                <div className="text-[10px] font-bold text-pink-400">WOMEN</div>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Row 2: Cash */}
 
                     <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
                         <div className="bg-cyan-50 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-cyan-600"><CreditCard className="w-6 h-6" /></div>
@@ -468,23 +522,35 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                         <h4 className="flex items-center gap-2 font-bold text-gray-600 mb-4 text-xs uppercase tracking-wider">
                             <CreditCard className="w-4 h-4 text-primary" /> Payment Methods
                         </h4>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
                                 <span className="text-sm font-medium text-gray-700">Cash</span>
                                 <span className="font-bold text-indigo-600">₹{metrics.cashSales.toFixed(2)}</span>
                             </div>
-                            {metrics.cardSales > 0 && (
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                                    <span className="text-sm font-medium text-gray-700">Card</span>
-                                    <span className="font-bold text-indigo-600">₹{metrics.cardSales.toFixed(2)}</span>
-                                </div>
-                            )}
-                            {metrics.upiSales > 0 && (
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                                    <span className="text-sm font-medium text-gray-700">E-Wallet/UPI</span>
-                                    <span className="font-bold text-indigo-600">₹{metrics.upiSales.toFixed(2)}</span>
-                                </div>
-                            )}
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm font-medium text-gray-700">Visa</span>
+                                <span className="font-bold text-indigo-600">₹{metrics.visaSales.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm font-medium text-gray-700">MasterCard</span>
+                                <span className="font-bold text-indigo-600">₹{metrics.masterCardSales.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm font-medium text-gray-700">Amex</span>
+                                <span className="font-bold text-indigo-600">₹{metrics.amexSales.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm font-medium text-gray-700">Maestro</span>
+                                <span className="font-bold text-indigo-600">₹{metrics.maestroSales.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm font-medium text-gray-700">E-Wallet/UPI</span>
+                                <span className="font-bold text-indigo-600">₹{metrics.upiSales.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-sm font-medium text-gray-700">Finance</span>
+                                <span className="font-bold text-indigo-600">₹{metrics.financeSales.toFixed(2)}</span>
+                            </div>
                             <div className="border-t border-dashed border-gray-200 mt-4 pt-4">
                                 <h5 className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-1 text-center">Overall Advance</h5>
                             </div>
@@ -506,14 +572,21 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
 
                     <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
                         <div className="bg-pink-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-pink-600"><CreditCard className="w-6 h-6" /></div>
-                        <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">Card Sales</div>
-                        <div className="text-xl font-bold text-pink-600">₹{metrics.cardSales.toFixed(0)}</div>
+                        <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">All Cards</div>
+                        <div className="text-xl font-bold text-pink-600">₹{(metrics.visaSales + metrics.masterCardSales + metrics.amexSales + metrics.maestroSales).toFixed(0)}</div>
+                    </div>
+
+
+                    <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
+                        <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-blue-600"><User className="w-6 h-6" /></div>
+                        <div className="text-xl font-bold text-blue-700">{metrics.regularCustomers}</div>
+                        <div className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Regular Customers</div>
                     </div>
 
                     <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
-                        <div className="bg-sky-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-sky-600"><CreditCard className="w-6 h-6" /></div>
-                        <div className="text-xs text-muted-foreground font-bold uppercase tracking-wider mb-1">E-Wallet</div>
-                        <div className="text-xl font-bold text-sky-600">₹{metrics.upiSales.toFixed(0)}</div>
+                        <div className="bg-amber-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-amber-600"><User className="w-6 h-6" /></div>
+                        <div className="text-xl font-bold text-amber-700">{metrics.oldCustomers}</div>
+                        <div className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Old Customers</div>
                     </div>
 
                     {/* Row 4 */}
@@ -545,7 +618,10 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                                 {loading && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
                                 {!loading && filteredInvoices.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">No invoices found</td></tr>}
                                 {!loading && filteredInvoices.map((inv, idx) => (
-                                    <tr key={inv.id} className="hover:bg-muted/50 transition-colors">
+                                    <tr key={inv.id} className={cn(
+                                        "hover:bg-muted/50 transition-colors",
+                                        inv.status === 'Cancelled' ? "bg-red-50 hover:bg-red-100/80" : ""
+                                    )}>
                                         <td className="px-6 py-4 text-muted-foreground font-medium">#{inv.invoiceNo || inv.id.substring(0, 6).toUpperCase()}</td>
                                         <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{inv.date}</td>
                                         <td className="px-6 py-4 text-foreground font-semibold">{inv.customerName || 'Walk-in'}</td>
@@ -556,7 +632,14 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                                         <td className="px-6 py-4 text-right text-foreground font-bold">₹{Number(inv.grandTotal).toFixed(2)}</td>
                                         <td className="px-6 py-4 text-center text-xs text-muted-foreground uppercase">{inv.paymentMethod || 'Cash'}</td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className="px-2.5 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold border border-green-200">Paid</span>
+                                            <span className={cn(
+                                                "px-2.5 py-1 rounded-full text-xs font-semibold border",
+                                                inv.status === 'Cancelled'
+                                                    ? "bg-red-100 text-red-700 border-red-200"
+                                                    : "bg-green-100 text-green-700 border-green-200"
+                                            )}>
+                                                {inv.status || 'Paid'}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4 text-center flex justify-center gap-2">
                                             <Button size="sm" onClick={() => handleView(inv)} variant="secondary" className="h-8 px-3 text-xs rounded-lg shadow-sm">
