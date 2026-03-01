@@ -6,6 +6,7 @@ import {
     CreditCard, Banknote
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -25,6 +26,10 @@ export default function Dashboard() {
     });
     const [salesGrowthData, setSalesGrowthData] = useState<any[]>([]);
     const [revenueStreamData, setRevenueStreamData] = useState<any[]>([]);
+    const [soldServicesData, setSoldServicesData] = useState<any[]>([]);
+    const [soldProductsData, setSoldProductsData] = useState<any[]>([]);
+    const [isServicesModalOpen, setIsServicesModalOpen] = useState(false);
+    const [isProductsModalOpen, setIsProductsModalOpen] = useState(false);
 
     useEffect(() => {
         // Services Count
@@ -47,13 +52,48 @@ export default function Dashboard() {
             const total = snap.docs.reduce((sum, doc) => sum + (Number(doc.data().grandTotal) || 0), 0);
             setStats(prev => ({ ...prev, sales: total }));
 
+            const soldServices: any[] = [];
+            const soldProducts: any[] = [];
+
             // Process Sales Growth Data (by date)
             const salesByDate: { [key: string]: number } = {};
             snap.docs.forEach(doc => {
                 const data = doc.data();
                 const date = data.date || new Date().toISOString().split('T')[0];
                 salesByDate[date] = (salesByDate[date] || 0) + (Number(data.grandTotal) || 0);
+
+                // Track Sold Items Details
+                if (data.items && Array.isArray(data.items)) {
+                    data.items.forEach((item: any) => {
+                        const saleRecord = {
+                            id: `${doc.id}-${Math.random()}`,
+                            invoiceId: doc.id,
+                            invoiceNo: data.invoiceNo || doc.id.substring(0, 6).toUpperCase(),
+                            date: data.date || new Date().toISOString().split('T')[0],
+                            customerName: data.customerName || 'Walk-in',
+                            customerPhone: data.customerPhone || '-',
+                            itemName: item.service || item.desc || item.name || '-',
+                            staff: item.staff || '-',
+                            price: item.price || 0,
+                            qty: item.qty || 1,
+                            disc: item.disc || 0,
+                            total: (Number(item.price || 0) * Number(item.qty || 1)) - (Number(item.disc) || 0)
+                        };
+
+                        if ((item.code || '').startsWith('P-') || (item.code || '').startsWith('PROD')) {
+                            soldProducts.push(saleRecord);
+                        } else {
+                            soldServices.push(saleRecord);
+                        }
+                    });
+                }
             });
+
+            // Sort products and services descending by date
+            soldServices.sort((a, b) => b.date.localeCompare(a.date));
+            soldProducts.sort((a, b) => b.date.localeCompare(a.date));
+            setSoldServicesData(soldServices);
+            setSoldProductsData(soldProducts);
 
             // Convert to chart format and sort by date
             const growthData = Object.entries(salesByDate)
@@ -143,30 +183,83 @@ export default function Dashboard() {
         return COLORS[index % COLORS.length];
     };
 
+    const renderTable = (data: any[], type: 'Service' | 'Product') => (
+        <div className="overflow-x-auto p-4 bg-muted/10">
+            <table className="w-full text-sm text-left border">
+                <thead className="bg-muted text-muted-foreground uppercase text-xs font-bold">
+                    <tr>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Invoice</th>
+                        <th className="px-4 py-3">{type} Name</th>
+                        <th className="px-4 py-3">Customer</th>
+                        <th className="px-4 py-3">Staff</th>
+                        <th className="px-4 py-3 text-right">Qty</th>
+                        <th className="px-4 py-3 text-right">Price</th>
+                        <th className="px-4 py-3 text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                    {data.length === 0 && (
+                        <tr>
+                            <td colSpan={8} className="text-center py-6 text-muted-foreground">No {type.toLowerCase()}s sold yet.</td>
+                        </tr>
+                    )}
+                    {data.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap">{item.date}</td>
+                            <td className="px-4 py-3 font-mono text-muted-foreground">{item.invoiceNo}</td>
+                            <td className="px-4 py-3 font-semibold text-foreground">{item.itemName}</td>
+                            <td className="px-4 py-3">
+                                <div className="font-medium text-foreground">{item.customerName}</div>
+                                <div className="text-xs text-muted-foreground">{item.customerPhone}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                                <span className={item.staff === '-' ? "text-muted-foreground" : "bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium"}>
+                                    {item.staff}
+                                </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">{item.qty}</td>
+                            <td className="px-4 py-3 text-right">₹{Number(item.price).toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-600">₹{Number(item.total).toFixed(2)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
     return (
         <div className="space-y-6 animate-fade-in p-4 lg:p-6">
 
             {/* --- TOP ROW CARDS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Services */}
-                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all">
+                <div
+                    onClick={() => setIsServicesModalOpen(true)}
+                    className="cursor-pointer bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all"
+                >
                     <div className="bg-blue-50/50 p-4 rounded-full mr-5 text-blue-600 group-hover:scale-110 transition-transform shadow-sm">
                         <Anchor className="w-8 h-8" />
                     </div>
                     <div>
                         <h3 className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{stats.services}</h3>
                         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Services</p>
+                        <p className="text-[10px] text-blue-500 font-bold mt-1 group-hover:underline">View Sales History</p>
                     </div>
                 </div>
 
                 {/* Products */}
-                <div className="bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all">
+                <div
+                    onClick={() => setIsProductsModalOpen(true)}
+                    className="cursor-pointer bg-card/80 backdrop-blur-md rounded-2xl p-6 border border-border shadow-sm hover-lift flex items-center min-h-[120px] group transition-all"
+                >
                     <div className="bg-purple-50/50 p-4 rounded-full mr-5 text-purple-600 group-hover:scale-110 transition-transform shadow-sm">
                         <ShoppingCart className="w-8 h-8" />
                     </div>
                     <div>
                         <h3 className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{stats.products}</h3>
                         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Products</p>
+                        <p className="text-[10px] text-purple-500 font-bold mt-1 group-hover:underline">View Sales History</p>
                     </div>
                 </div>
 
@@ -352,6 +445,25 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* Modals for viewing Sales History */}
+            <Modal
+                title="Services Sales History"
+                isOpen={isServicesModalOpen}
+                onClose={() => setIsServicesModalOpen(false)}
+                className="max-w-6xl w-full"
+            >
+                {renderTable(soldServicesData, 'Service')}
+            </Modal>
+
+            <Modal
+                title="Products Sales History"
+                isOpen={isProductsModalOpen}
+                onClose={() => setIsProductsModalOpen(false)}
+                className="max-w-6xl w-full"
+            >
+                {renderTable(soldProductsData, 'Product')}
+            </Modal>
         </div>
     );
 }

@@ -107,8 +107,6 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
     };
 
     // Derived metrics
-    const totalSales = invoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
-    const totalCash = invoices.filter(i => (i.paymentMethod || 'Cash') === 'Cash').reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
     // Calculate actual expenses
     const totalExpenses = expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
     // Placeholder for advance if not yet implemented in DB
@@ -120,6 +118,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
         let productBills = 0;
         let serviceRevenue = 0;
         let productRevenue = 0;
+        let totalSales = 0;
         let menCount = 0;
         let womenCount = 0;
         let cashSales = 0;
@@ -135,6 +134,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
             const grandTotal = Number(inv.grandTotal) || 0;
             const discount = Number(inv.totalDiscount) || 0;
             totalDiscount += discount;
+            totalSales += grandTotal;
 
             let hasService = false;
             let hasProduct = false;
@@ -223,6 +223,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
             productBills,
             serviceRevenue,
             productRevenue,
+            totalSales,
             menCount,
             womenCount,
             cashSales,
@@ -500,10 +501,10 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
 
                     <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-6 text-white text-center shadow-lg">
                         <div className="flex flex-col items-center justify-center h-full">
-                            <div className="bg-white/20 p-2 rounded-lg mb-2"><LayoutDashboard className="w-5 h-5 text-white" /></div>
-                            <h3 className="text-2xl font-bold">0</h3>
-                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-80">Product Net</p>
-                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">0 Gross</p>
+                            <div className="bg-white/20 p-2 rounded-lg mb-2"><BarChart3 className="w-5 h-5 text-white" /></div>
+                            <h3 className="text-3xl font-bold">₹{metrics.totalSales.toFixed(0)}</h3>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-80">Total Amount</p>
+                            <p className="text-[10px] uppercase font-bold tracking-wider opacity-60">Total Revenue</p>
                         </div>
                     </div>
 
@@ -652,6 +653,15 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                                     </tr>
                                 ))}
                             </tbody>
+                            {!loading && filteredInvoices.length > 0 && (
+                                <tfoot className="bg-muted/50 font-bold border-t border-border">
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-4 text-right uppercase text-xs text-muted-foreground">Total Amount:</td>
+                                        <td className="px-6 py-4 text-right text-primary text-base">₹{metrics.totalSales.toFixed(2)}</td>
+                                        <td colSpan={3}></td>
+                                    </tr>
+                                </tfoot>
+                            )}
                         </table>
                     </div>
                 </div>
