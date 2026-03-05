@@ -16,7 +16,7 @@ import {
     History
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { BillDetailView } from "./BillDetailView";
 
@@ -25,6 +25,19 @@ interface BillingHomeProps {
 }
 
 export function BillingHome({ onCreate }: BillingHomeProps) {
+    const getTime = (timestamp: any) => {
+        if (!timestamp) return '';
+        let date;
+        if (timestamp.toDate) {
+            date = timestamp.toDate();
+        } else if (timestamp.seconds) {
+            date = new Date(timestamp.seconds * 1000);
+        } else {
+            date = new Date(timestamp);
+        }
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
     const [searchTerm, setSearchTerm] = useState("");
     const [invoices, setInvoices] = useState<any[]>([]);
     const [expenses, setExpenses] = useState<any[]>([]); // New State for expenses
@@ -97,6 +110,14 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
         }
 
         return matchesSearch && matchesDate;
+    }).sort((a, b) => {
+        const getV = (t: any, altText: string) => {
+            if (!t) return new Date(altText).getTime() || 0;
+            if (t.seconds) return t.seconds * 1000;
+            if (t.toDate) return t.toDate().getTime();
+            return new Date(t).getTime() || 0;
+        };
+        return getV(b.createdAt, b.date) - getV(a.createdAt, a.date);
     });
 
     // Clear date filter
@@ -129,8 +150,14 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
         let upiSales = 0;
         let financeSales = 0;
         let totalDiscount = 0;
+        let cancelledBills = 0;
 
         filteredInvoices.forEach(inv => {
+            if (inv.status === 'Cancelled') {
+                cancelledBills++;
+                return; // Do not include in revenue
+            }
+
             const grandTotal = Number(inv.grandTotal) || 0;
             const discount = Number(inv.totalDiscount) || 0;
             totalDiscount += discount;
@@ -236,7 +263,8 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
             totalDiscount,
             totalBills: filteredInvoices.length,
             regularCustomers,
-            oldCustomers
+            oldCustomers,
+            cancelledBills
         };
     };
 
@@ -288,7 +316,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                 <div class="bill-info">
                     <div>
                         <div><strong>Invoice #:</strong> ${bill.invoiceNo || bill.id.substring(0, 8).toUpperCase()}</div>
-                        <div><strong>Date:</strong> ${bill.date || new Date().toISOString().split('T')[0]}</div>
+                        <div><strong>Date:</strong> ${bill.date || new Date().toISOString().split('T')[0]} ${(bill.createdAt ? getTime(bill.createdAt) : '')}</div>
                         <div><strong>Payment:</strong> ${bill.paymentMethod || 'Cash'}</div>
                     </div>
                     <div>
@@ -346,8 +374,30 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
         setSelectedBill(bill);
     };
 
+    // Cancel Handler
+    const handleCancelBill = async (billId: string) => {
+        if (window.confirm("Are you sure you want to cancel this bill?")) {
+            try {
+                const billRef = doc(db, "bills", billId);
+                await updateDoc(billRef, { status: 'Cancelled' });
+                setSelectedBill(null); // Return to list view
+            } catch (error) {
+                console.error("Error cancelling bill:", error);
+                alert("Failed to cancel bill");
+            }
+        }
+    };
+
     if (selectedBill) {
-        return <BillDetailView bill={selectedBill} onClose={() => setSelectedBill(null)} />;
+        return <BillDetailView
+            bill={selectedBill}
+            onClose={() => setSelectedBill(null)}
+            onCancel={handleCancelBill}
+            onAddNew={() => {
+                setSelectedBill(null);
+                onCreate();
+            }}
+        />;
     }
 
 
@@ -567,7 +617,7 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
 
                     <div className="bg-white border border-border rounded-2xl p-4 shadow-sm flex flex-col justify-center items-center">
                         <div className="bg-red-100 w-12 h-12 rounded-xl flex items-center justify-center mb-2 text-red-600"><LayoutDashboard className="w-6 h-6" /></div>
-                        <div className="text-xl font-bold text-red-700">0</div>
+                        <div className="text-xl font-bold text-red-700">{metrics.cancelledBills}</div>
                         <div className="text-[10px] text-red-600 font-bold uppercase tracking-wider">Cancelled Bills</div>
                     </div>
 
@@ -624,7 +674,10 @@ export function BillingHome({ onCreate }: BillingHomeProps) {
                                         inv.status === 'Cancelled' ? "bg-red-50 hover:bg-red-100/80" : ""
                                     )}>
                                         <td className="px-6 py-4 text-muted-foreground font-medium">#{inv.invoiceNo || inv.id.substring(0, 6).toUpperCase()}</td>
-                                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{inv.date}</td>
+                                        <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">
+                                            <div>{inv.date}</div>
+                                            {inv.createdAt && <div className="text-[10px] text-muted-foreground/70">{getTime(inv.createdAt)}</div>}
+                                        </td>
                                         <td className="px-6 py-4 text-foreground font-semibold">{inv.customerName || 'Walk-in'}</td>
                                         <td className="px-6 py-4 text-muted-foreground">{inv.customerPhone || '-'}</td>
                                         <td className="px-6 py-4 text-muted-foreground text-xs text-center">

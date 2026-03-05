@@ -7,9 +7,10 @@ interface BillDetailViewProps {
     bill: any;
     onClose: () => void;
     onCancel?: (billId: string) => void;
+    onAddNew?: () => void;
 }
 
-export function BillDetailView({ bill, onClose, onCancel }: BillDetailViewProps) {
+export function BillDetailView({ bill, onClose, onCancel, onAddNew }: BillDetailViewProps) {
     if (!bill) return null;
 
 
@@ -19,12 +20,22 @@ export function BillDetailView({ bill, onClose, onCancel }: BillDetailViewProps)
     const customerPhone = bill.customerPhone ? bill.customerPhone : "";
     const nameDisplay = customerPhone ? `${customerPhone} - ${customerName}` : customerName;
 
-    // Format Date: "09/02/2026 08:09 PM"
-    const dateObj = bill.date ? new Date(bill.date) : new Date();
-    // Simple format if date string is standard, otherwise use logic
-    // Assuming bill.date is YYYY-MM-DD or ISO. 
-    // If it's just YYYY-MM-DD, we might mock time or leave it.
-    const dateDisplay = bill.date;
+    // Format Date & Time
+    const getTime = (timestamp: any) => {
+        if (!timestamp) return '';
+        let date;
+        if (timestamp.toDate) {
+            date = timestamp.toDate();
+        } else if (timestamp.seconds) {
+            date = new Date(timestamp.seconds * 1000);
+        } else {
+            date = new Date(timestamp);
+        }
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const timeString = getTime(bill.createdAt);
+    const dateDisplay = timeString ? `${bill.date} ${timeString}` : bill.date;
 
     // Items
     const items = bill.items || [];
@@ -281,6 +292,7 @@ export function BillDetailView({ bill, onClose, onCancel }: BillDetailViewProps)
                         Close X
                     </Button>
                     <Button
+                        onClick={onAddNew}
                         className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-none font-medium h-9 rounded-none shadow-sm"
                     >
                         Add New Bill <Plus className="w-4 h-4 ml-1" />

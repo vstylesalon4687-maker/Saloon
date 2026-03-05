@@ -10,6 +10,8 @@ import { collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteD
 export default function ExpensesPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [expenses, setExpenses] = useState<any[]>([]);
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const [selectedMonth, setSelectedMonth] = useState(currentMonth);
     const [loading, setLoading] = useState(true);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -123,12 +125,40 @@ export default function ExpensesPage() {
         }
     };
 
-    const totalExpenses = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const filteredExpenses = expenses.filter(e => {
+        if (!selectedMonth) return true;
+        const eDate = e.date || new Date().toISOString().split('T')[0];
+        return eDate.startsWith(selectedMonth);
+    });
+
+    const totalExpenses = filteredExpenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
     return (
         <div className="space-y-6 animate-fade-in p-2">
 
-            {/* --- TOP ROW METRICS --- */}
+            {/* --- TOP HEADER --- */}
+            <div className="flex flex-col sm:flex-row justify-between items-center bg-card dark:bg-background border border-border rounded-2xl p-4 shadow-sm mb-6">
+                <div>
+                    <h2 className="text-xl font-bold text-foreground">Expenses Overview</h2>
+                    <p className="text-sm text-muted-foreground font-medium">Manage your salon's expenses</p>
+                </div>
+                <div className="flex items-center gap-3 mt-4 sm:mt-0">
+                    <label className="text-sm font-semibold text-muted-foreground">Filter Month:</label>
+                    <input
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="bg-muted/50 border border-input text-foreground rounded-lg px-3 py-2 text-sm font-medium focus:ring-1 focus:ring-primary outline-none shadow-sm"
+                    />
+                    <button
+                        onClick={() => setSelectedMonth("")}
+                        className="text-xs bg-muted hover:bg-muted/80 text-foreground px-3 py-2 rounded-lg transition-colors font-medium border border-border"
+                    >
+                        All Time
+                    </button>
+                </div>
+            </div>
+
             {/* --- TOP ROW METRICS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Expenses */}
@@ -149,7 +179,7 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                         <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
-                            ₹{expenses.filter(e => e.status === 'Pending').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()}
+                            ₹{filteredExpenses.filter(e => e.status === 'Pending').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()}
                         </h3>
                         <p className="text-sm font-medium text-muted-foreground">Pending Bills</p>
                     </div>
@@ -162,7 +192,7 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                         <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
-                            {new Set(expenses.map(e => e.category)).size}
+                            {new Set(filteredExpenses.map(e => e.category)).size}
                         </h3>
                         <p className="text-sm font-medium text-muted-foreground">Active Categories</p>
                     </div>
@@ -175,7 +205,7 @@ export default function ExpensesPage() {
                     </div>
                     <div>
                         <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
-                            ₹{expenses
+                            ₹{filteredExpenses
                                 .filter(e => e.date === new Date().toISOString().split('T')[0])
                                 .reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
                                 .toLocaleString()}
@@ -203,7 +233,7 @@ export default function ExpensesPage() {
                     </div>
                     <div className="space-y-4">
                         {(() => {
-                            const catStats = expenses.reduce((acc, curr) => {
+                            const catStats = filteredExpenses.reduce((acc, curr) => {
                                 acc[curr.category] = (acc[curr.category] || 0) + Number(curr.amount);
                                 return acc;
                             }, {} as Record<string, number>);
@@ -293,7 +323,7 @@ export default function ExpensesPage() {
                     <div className="mr-3 p-2 bg-teal-50 text-teal-600 rounded-xl"><Banknote className="w-5 h-5" /></div>
                     <div>
                         <h3 className="font-bold text-lg text-foreground">
-                            {expenses.filter(e => e.method === 'Cash').length}
+                            {filteredExpenses.filter(e => e.method === 'Cash').length}
                         </h3>
                         <p className="text-xs text-muted-foreground font-medium">Cash Txns</p>
                     </div>
@@ -302,7 +332,7 @@ export default function ExpensesPage() {
                     <div className="mr-3 p-2 bg-rose-50 text-rose-600 rounded-xl"><CreditCard className="w-5 h-5" /></div>
                     <div>
                         <h3 className="font-bold text-lg text-foreground">
-                            {expenses.filter(e => e.method === 'Bank Transfer').length}
+                            {filteredExpenses.filter(e => e.method === 'Bank Transfer').length}
                         </h3>
                         <p className="text-xs text-muted-foreground font-medium">Bank Transfers</p>
                     </div>
@@ -311,14 +341,14 @@ export default function ExpensesPage() {
                     <div className="mr-3 p-2 bg-blue-50 text-blue-600 rounded-xl"><Smartphone className="w-5 h-5" /></div>
                     <div>
                         <h3 className="font-bold text-lg text-foreground">
-                            {expenses.filter(e => e.method === 'Online' || e.method === 'GPay').length}
+                            {filteredExpenses.filter(e => e.method === 'Online' || e.method === 'GPay').length}
                         </h3>
                         <p className="text-xs text-muted-foreground font-medium">Online/GPay</p>
                     </div>
                 </div>
                 <div className="bg-card rounded-2xl p-4 flex items-center shadow-sm border border-border hover:shadow-md transition-shadow">
                     <div className="mr-3 p-2 bg-purple-50 text-purple-600 rounded-xl"><Wallet className="w-5 h-5" /></div>
-                    <div><h3 className="font-bold text-lg text-foreground">{expenses.length}</h3><p className="text-xs text-muted-foreground font-medium">Transactions</p></div>
+                    <div><h3 className="font-bold text-lg text-foreground">{filteredExpenses.length}</h3><p className="text-xs text-muted-foreground font-medium">Transactions</p></div>
                 </div>
             </div>
 
@@ -354,8 +384,8 @@ export default function ExpensesPage() {
                         </thead>
                         <tbody className="divide-y divide-border">
                             {loading && <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</td></tr>}
-                            {!loading && expenses.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No expenses found.</td></tr>}
-                            {!loading && expenses.map((expense) => (
+                            {!loading && filteredExpenses.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">No expenses found for this month.</td></tr>}
+                            {!loading && filteredExpenses.map((expense) => (
                                 <tr key={expense.id} className="hover:bg-muted/50 transition-colors">
                                     <td className="px-6 py-4 font-medium text-foreground">{expense.title}</td>
                                     <td className="px-6 py-4">

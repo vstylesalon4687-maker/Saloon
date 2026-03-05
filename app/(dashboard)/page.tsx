@@ -24,6 +24,9 @@ export default function Dashboard() {
         online: 0,
         total: 0
     });
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+    const [bills, setBills] = useState<any[]>([]);
     const [salesGrowthData, setSalesGrowthData] = useState<any[]>([]);
     const [revenueStreamData, setRevenueStreamData] = useState<any[]>([]);
     const [soldServicesData, setSoldServicesData] = useState<any[]>([]);
@@ -49,85 +52,8 @@ export default function Dashboard() {
 
         // Sales Total and Charts Data (from bills)
         const unsubSales = onSnapshot(collection(db, "bills"), (snap) => {
-            const total = snap.docs.reduce((sum, doc) => sum + (Number(doc.data().grandTotal) || 0), 0);
-            setStats(prev => ({ ...prev, sales: total }));
-
-            const soldServices: any[] = [];
-            const soldProducts: any[] = [];
-
-            // Process Sales Growth Data (by date)
-            const salesByDate: { [key: string]: number } = {};
-            snap.docs.forEach(doc => {
-                const data = doc.data();
-                const date = data.date || new Date().toISOString().split('T')[0];
-                salesByDate[date] = (salesByDate[date] || 0) + (Number(data.grandTotal) || 0);
-
-                // Track Sold Items Details
-                if (data.items && Array.isArray(data.items)) {
-                    data.items.forEach((item: any) => {
-                        const saleRecord = {
-                            id: `${doc.id}-${Math.random()}`,
-                            invoiceId: doc.id,
-                            invoiceNo: data.invoiceNo || doc.id.substring(0, 6).toUpperCase(),
-                            date: data.date || new Date().toISOString().split('T')[0],
-                            customerName: data.customerName || 'Walk-in',
-                            customerPhone: data.customerPhone || '-',
-                            itemName: item.service || item.desc || item.name || '-',
-                            staff: item.staff || '-',
-                            price: item.price || 0,
-                            qty: item.qty || 1,
-                            disc: item.disc || 0,
-                            total: (Number(item.price || 0) * Number(item.qty || 1)) - (Number(item.disc) || 0)
-                        };
-
-                        if ((item.code || '').startsWith('P-') || (item.code || '').startsWith('PROD')) {
-                            soldProducts.push(saleRecord);
-                        } else {
-                            soldServices.push(saleRecord);
-                        }
-                    });
-                }
-            });
-
-            // Sort products and services descending by date
-            soldServices.sort((a, b) => b.date.localeCompare(a.date));
-            soldProducts.sort((a, b) => b.date.localeCompare(a.date));
-            setSoldServicesData(soldServices);
-            setSoldProductsData(soldProducts);
-
-            // Convert to chart format and sort by date
-            const growthData = Object.entries(salesByDate)
-                .map(([date, sales]) => ({ date, sales: Number(sales.toFixed(2)) }))
-                .sort((a, b) => a.date.localeCompare(b.date))
-                .slice(-7); // Last 7 days
-            setSalesGrowthData(growthData);
-
-            // Process Revenue Stream Data (by payment method)
-            const revenueByMethod: { [key: string]: number } = {};
-            snap.docs.forEach(doc => {
-                const data = doc.data();
-                // Check if detailed payment info is available (for split payments or newer records)
-                if (data.paymentDetails && data.paymentDetails.modes && Array.isArray(data.paymentDetails.modes)) {
-                    data.paymentDetails.modes.forEach((mode: any) => {
-                        const amount = Number(mode.amount) || 0;
-                        if (amount > 0) {
-                            revenueByMethod[mode.method] = (revenueByMethod[mode.method] || 0) + amount;
-                        }
-                    });
-                } else {
-                    // Fallback for older records
-                    const method = data.paymentMethod || 'Cash';
-                    // Avoid double counting 'Split' if it was somehow recorded without details, or just record it as 'Split'
-                    revenueByMethod[method] = (revenueByMethod[method] || 0) + (Number(data.grandTotal) || 0);
-                }
-            });
-
-            // Convert to chart format
-            const streamData = Object.entries(revenueByMethod).map(([name, value]) => ({
-                name,
-                value: Number(value.toFixed(2))
-            }));
-            setRevenueStreamData(streamData);
+            const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setBills(data);
         }, (err) => console.error("Bills fetch error:", err));
 
         // Appointments (Placeholder for now if collection doesn't exist, will just be 0)
@@ -156,6 +82,97 @@ export default function Dashboard() {
             unsubAppointments();
         };
     }, []);
+
+    useEffect(() => {
+        let filteredBills = bills;
+        if (selectedMonth) {
+            filteredBills = bills.filter(bill => {
+                const bDate = bill.date || new Date().toISOString().split('T')[0];
+                return bDate.startsWith(selectedMonth);
+            });
+        }
+
+        const total = filteredBills.reduce((sum, bill) => {
+            if (bill.status === 'Cancelled') return sum;
+            return sum + (Number(bill.grandTotal) || 0);
+        }, 0);
+
+        setStats(prev => ({ ...prev, sales: total }));
+
+        const soldServices: any[] = [];
+        const soldProducts: any[] = [];
+        const salesByDate: { [key: string]: number } = {};
+        const revenueByMethod: { [key: string]: number } = {};
+
+        filteredBills.forEach(data => {
+            if (data.status === 'Cancelled') return;
+
+            const date = data.date || new Date().toISOString().split('T')[0];
+            salesByDate[date] = (salesByDate[date] || 0) + (Number(data.grandTotal) || 0);
+
+            // Track Sold Items Details
+            if (data.items && Array.isArray(data.items)) {
+                data.items.forEach((item: any) => {
+                    const saleRecord = {
+                        id: `${data.id}-${Math.random()}`,
+                        invoiceId: data.id,
+                        invoiceNo: data.invoiceNo || data.id.substring(0, 6).toUpperCase(),
+                        date: data.date || new Date().toISOString().split('T')[0],
+                        customerName: data.customerName || 'Walk-in',
+                        customerPhone: data.customerPhone || '-',
+                        itemName: item.service || item.desc || item.name || '-',
+                        staff: item.staff || '-',
+                        price: item.price || 0,
+                        qty: item.qty || 1,
+                        disc: item.disc || 0,
+                        total: (Number(item.price || 0) * Number(item.qty || 1)) - (Number(item.disc) || 0)
+                    };
+
+                    if ((item.code || '').startsWith('P-') || (item.code || '').startsWith('PROD')) {
+                        soldProducts.push(saleRecord);
+                    } else {
+                        soldServices.push(saleRecord);
+                    }
+                });
+            }
+
+            // Process Revenue Stream
+            if (data.paymentDetails && data.paymentDetails.modes && Array.isArray(data.paymentDetails.modes)) {
+                data.paymentDetails.modes.forEach((mode: any) => {
+                    const amount = Number(mode.amount) || 0;
+                    if (amount > 0) {
+                        revenueByMethod[mode.method] = (revenueByMethod[mode.method] || 0) + amount;
+                    }
+                });
+            } else {
+                const method = data.paymentMethod || 'Cash';
+                revenueByMethod[method] = (revenueByMethod[method] || 0) + (Number(data.grandTotal) || 0);
+            }
+        });
+
+        // Sort products and services descending by date
+        soldServices.sort((a, b) => b.date.localeCompare(a.date));
+        soldProducts.sort((a, b) => b.date.localeCompare(a.date));
+        setSoldServicesData(soldServices);
+        setSoldProductsData(soldProducts);
+
+        // Convert to chart format and sort by date
+        let growthData = Object.entries(salesByDate)
+            .map(([date, sales]) => ({ date, sales: Number(sales.toFixed(2)) }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+        if (!selectedMonth) {
+            growthData = growthData.slice(-30); // Last 30 days if all time
+        }
+
+        setSalesGrowthData(growthData);
+
+        const streamData = Object.entries(revenueByMethod).map(([name, value]) => ({
+            name,
+            value: Number(value.toFixed(2))
+        }));
+        setRevenueStreamData(streamData);
+    }, [bills, selectedMonth]);
 
     const COLORS = [
         '#10b981', // Cash - Green
@@ -230,6 +247,29 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6 animate-fade-in p-4 lg:p-6">
+
+            {/* --- TOP HEADER --- */}
+            <div className="flex flex-col sm:flex-row justify-between items-center bg-card dark:bg-background border border-border rounded-2xl p-4 shadow-sm">
+                <div>
+                    <h2 className="text-xl font-bold text-foreground">Dashboard Overview</h2>
+                    <p className="text-sm text-muted-foreground font-medium">Analyze your salon's performance</p>
+                </div>
+                <div className="flex items-center gap-3 mt-4 sm:mt-0">
+                    <label className="text-sm font-semibold text-muted-foreground">Filter Month:</label>
+                    <input
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="bg-muted/50 border border-input text-foreground rounded-lg px-3 py-2 text-sm font-medium focus:ring-1 focus:ring-primary outline-none shadow-sm"
+                    />
+                    <button
+                        onClick={() => setSelectedMonth("")}
+                        className="text-xs bg-muted hover:bg-muted/80 text-foreground px-3 py-2 rounded-lg transition-colors font-medium border border-border"
+                    >
+                        All Time
+                    </button>
+                </div>
+            </div>
 
             {/* --- TOP ROW CARDS --- */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -359,13 +399,13 @@ export default function Dashboard() {
                             <CreditCard className="w-6 h-6" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-lg text-foreground">Daily Revenue</h3>
-                            <p className="text-xs text-muted-foreground font-medium">Financial Snapshot</p>
+                            <h3 className="font-bold text-lg text-foreground">Revenue Overview</h3>
+                            <p className="text-xs text-muted-foreground font-medium">{selectedMonth ? 'Selected Month Snapshot' : 'All Time Snapshot'}</p>
                         </div>
                     </div>
                     <div className="space-y-4 flex-1">
                         <div className="bg-gradient-to-r from-background to-muted/50 p-5 rounded-xl border border-border shadow-sm">
-                            <span className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">Total Generated</span>
+                            <span className="text-muted-foreground text-xs font-bold uppercase tracking-wider block mb-2">{selectedMonth ? "Monthly Generated" : "Total Generated"}</span>
                             <span className="font-mono font-bold text-foreground text-3xl block">₹{stats.sales.toFixed(2)}</span>
                             <div className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-600">
                                 <TrendingUp className="w-3 h-3" /> +12% from yesterday
